@@ -1,34 +1,92 @@
-# video-editor
+# video-editor · 9:16 口播视频合成 / 标题卡 / 动效 / 字幕
 
-> An Agent Skill (Claude Code / OpenAI Codex) for composing 9:16 short-form videos from a talking-head recording
-> plus animated overlays — title cards, kinetic typography, full-screen data cards,
-> burned-in subtitles. Outputs an integrated MP4 preview and an optional ProRes 4444
-> alpha overlay layer for editing-software workflows.
+![GitHub stars](https://img.shields.io/github/stars/lainshao/video-editor?style=flat-square)
+![License](https://img.shields.io/github/license/lainshao/video-editor?style=flat-square)
+![Skill](https://img.shields.io/badge/Skill-Agent-111111?style=flat-square)
+![9:16](https://img.shields.io/badge/format-9%3A16%20vertical-0A7CFF?style=flat-square)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-Supported-6B5B95?style=flat-square)
+![Codex](https://img.shields.io/badge/Codex-Supported-222222?style=flat-square)
 
-**Status**: pre-1.0, optimized for Chinese-language short-form on 抖音 / 小红书 / 视频号 / Reels / Shorts. The default visual identity ("Hana theme") ships with the templates — see [Theming](#theming) for rebranding notes.
+> 🌏 **English version: [README.en.md](./README.en.md)**
 
----
+一个适配 Claude Code / Codex 等 Agent 环境的短视频合成技能。给它一条 9:16 竖屏口播录像，它帮你**烧标题卡片头、加动效叠层、烧关键词高亮字幕**，输出一条可直接发布的 `_整片.mp4`，以及（可选）给剪辑软件用的透明通道 `_broll层.mov`。
 
-## What it does
+内置三个子模块，按需调用、不强制走全流程：
 
-You give the skill a finished talking-head recording (`speech.mov`, 9:16 portrait). It helps you:
+- **opener · 标题卡**：4.5s 动态片头，金字（拉美/泛文化）或黄字（AI 系列）两款，透明叠在口播上。
+- **animator · 动效**：弹出关键词、全屏数据卡、编号列举、多段轮播等 7 个 HTML 模板，走「三道门」评审流程，结构性错误在 0 渲染阶段就抓住。
+- **subtitle · 字幕**：whisper 自动转写 → 关键词黄色高亮 → PNG overlay 烧进画面。
 
-| Task | Submodule | How |
-|---|---|---|
-| Burn a 4.5s kinetic **title card** at 0s | `opener/` | Choose gold (metallic gradient) or yellow (Anthropic-style brick-red) variant |
-| Add **animated overlays** during talking head — pop-up keywords, full-screen data cards, numbered lists, multi-phase carousels | `animator/` | 7 HTML templates, GSAP-driven, rendered by HyperFrames CLI or timecut |
-| Burn **keyword-highlighted captions** onto the finished video | `subtitle/` | Auto-transcribe with whisper, apply spelling corrections, overlay PNG captions with yellow keyword highlighting |
-| Compose **dual outputs** — integrated MP4 + alpha-channel ProRes overlay layer | `recipes/compose_dual.sh.template` | ffmpeg recipe; both share the same overlay chain |
+> 由一线内容创作者在真实出海 / AI 科普系列短视频中沉淀而成，踩过的每一个坑都写进了 `recipes/PITFALLS.md`（22 条最贵的教训）。
 
-The skill is **routing-first**: when invoked it asks what you want to do (subtitles only? title card only? new cue / full compose? entire pipeline?), then dispatches to the right submodule. It does not force a full pipeline.
+<!-- TODO: 在这里放 2-3 张成品图 / GIF（标题卡 + 动效 cue + 烧字幕效果）。
+     可从 gallery.html 截关键帧，或导一段 3-5s GIF。挑可公开、不露脸/未发布内容的帧。
+     格式： ![标题卡效果](https://github.com/user-attachments/assets/xxxx) -->
 
----
+## 30 秒开始
 
-## Quick start
+把下面这段话直接发给有 shell 权限的 AI Agent（Claude Code / Codex / Cursor），它会自动装好：
 
-### Install
+```text
+帮我安装 video-editor 这个 Agent Skill。请把
+https://github.com/lainshao/video-editor 克隆到我的 skills 目录
+（Claude Code 用 ~/.claude/skills/video-editor，Codex 用 ~/.agents/skills/video-editor），
+装完检查 SKILL.md、opener/、animator/、subtitle/ 是否都在。
+```
 
-This is an **Agent Skill** — the open `SKILL.md` format supported by both [Claude Code](https://docs.claude.com/en/docs/claude-code) and [OpenAI Codex](https://developers.openai.com/codex/skills). Clone it into your agent's skills directory:
+装好后，直接对 Agent 说：
+
+```text
+帮我剪一下这个视频。
+帮我给这条口播加字幕。
+帮我做个片头标题卡。
+新一期出海系列，从口播出整片。
+```
+
+它会先问你「最后要做成什么样」，再派给对应子模块。
+
+## 能做什么
+
+- 🎬 **0s 标题卡片头**：金字 / 黄字两款，透明 alpha 叠在 talking head 上，不是独立黑屏镜头
+- ✨ **7 个动效模板**：关键词黄胶囊弹出、全屏数据卡、编号 1–4 列举、多段顶部轮播、群体 emoji 冲击等
+- 🔤 **关键词高亮字幕**：whisper 自动转写 + 拼写修正 + 重点词黄色高亮，PNG overlay 烧死进画面
+- 🎞 **双输出**：`_整片.mp4`（H.264 含音频，直接发）+ 可选 `_broll层.mov`（ProRes 4444 透明通道，进 Premiere / AE / FCP 叠层）
+- 🚪 **三道门评审**：方案 → HTML 预览 → 渲前确认，把 fact-check / 样式 / 位置错误挡在渲染前，省渲染时间和 token
+- 🎨 **Hana 视觉系统**：米色底 + 黄色记号笔强调 + 墨色字，可整体换肤
+- 📐 **安全区内置**：顶部 10% / 底部 15% 留空，避开刘海和各平台 UI（抖音/小红书/视频号/Reels/Shorts）
+
+## 适合 / 不适合
+
+**✅ 合适**：9:16 竖屏口播 talking-head 视频 / 出海 / 知识科普 / 泛文化叙事 / 需要标题卡和动效字幕的短视频
+
+**❌ 不合适**：16:9 横屏（v2 路线图）/ 纯语音生成 / 实拍 stock 素材抓取（调 `stock-video`）/ 低于 30s 的碎素材
+
+## 常见使用场景
+
+| 你想做的 | 推荐方式 |
+|------|---------|
+| 已有成片，只缺字幕 | 说「加字幕」→ subtitle 子模块，不走三道门 |
+| 只要一个片头标题卡 | 说「做个片头」→ opener 子模块 |
+| 给整片加弹出关键词 / 数据卡 | 说「在 X 秒加个 chyron / 切个数据卡」→ animator |
+| 一条裸口播从头做成整片 | 说「新一期 X 系列」→ 全流程走三道门 |
+| 发现 fact-check 错了要重做 | 走 animator 三道门，门 1 改方案最便宜 |
+
+## 平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| Claude Code | 支持 | 原生 Skill，路由那步用 `AskUserQuestion` 可点击菜单 |
+| Codex | 支持 | 同一套 `SKILL.md` 格式，路由降级为纯文字提问，功能不变 |
+| Cursor / 其他本地 Agent | 可用 | 需要能读写文件 + 执行 shell（ffmpeg / node / python） |
+| 普通 Chatbot | 不推荐 | 没有文件系统和渲染环境，跑不起来 |
+
+## 安装
+
+### 方式一：把这段话发给 AI（推荐，零门槛）
+
+见上面「30 秒开始」，复制那段话给任意有 shell 权限的 Agent 即可。
+
+### 方式二：手动命令行
 
 ```bash
 # Claude Code
@@ -38,171 +96,102 @@ git clone https://github.com/lainshao/video-editor.git ~/.claude/skills/video-ed
 git clone https://github.com/lainshao/video-editor.git ~/.agents/skills/video-editor
 ```
 
-Restart your agent (or start a new session) so it picks up the skill. Then just say
-"剪一下这个视频" / "帮我加字幕" / "做个片头" and it routes you to the right submodule.
+装完重启 Agent（或开新会话）让它识别这个 skill。
 
-> **Cross-agent note**: The HTML templates, ffmpeg recipes, and Python/whisper scripts are
-> agent-agnostic. The only Claude-specific touch is the routing step, which uses Claude Code's
-> `AskUserQuestion` for a clickable menu; under Codex it degrades gracefully to a plain-text
-> question. Both engines auto-trigger the skill from the `description` keywords in `SKILL.md`.
-
-### Dependencies
+### 依赖
 
 ```bash
-# Required system binaries
-brew install ffmpeg                    # video compose + caption burn
-brew install whisper-cpp               # transcription (cli is `whisper-cli`)
-brew install node                      # for HyperFrames / timecut
+brew install ffmpeg            # 合成 + 烧字幕
+brew install whisper-cpp       # 转写（命令是 whisper-cli）
+brew install node              # HyperFrames / timecut 渲染（22 ≤ Node < 25）
+npm install -g hyperframes     # HTML → 视频 渲染器
+pip install -r subtitle/requirements.txt   # 字幕模块只需 Pillow
 
-# HyperFrames CLI (HTML → video renderer)
-npm install -g hyperframes             # or use `npx --yes hyperframes` ad-hoc
-
-# Whisper model (~1.6GB)
+# whisper 模型（约 1.6GB）
 mkdir -p ~/.whisper-models
 curl -L -o ~/.whisper-models/ggml-large-v3-turbo.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
-
-# Python deps for subtitle module (Pillow only)
-pip install -r subtitle/requirements.txt
 ```
 
-**Node version**: 22 ≤ Node < 25. Node 25 has known silent init failures in `timecut` / `hyperframes`.
+> ⚠️ Node 25 在 `timecut` / `hyperframes` 上有已知的静默初始化失败，请用 22 ≤ Node < 25。
 
-**Optional env var**:
-```bash
-export WHISPER_MODEL_PATH=/path/to/ggml-base.bin   # if you don't use the default
-```
+### 触发方式
 
-### Invoking from Claude Code
-
-Once installed under `~/.claude/skills/video-editor/`, the skill auto-triggers when you say:
-
-| You say | Goes to |
+| 你说 | 派给 |
 |---|---|
-| "Add subtitles to this video" | `subtitle/` (no routing prompt) |
-| "Make me a title card" | `opener/` (chooses gold/yellow by context) |
-| "New episode" / "do a full video" | Full pipeline through the Three Gates workflow |
-| "Add a chyron at X seconds" | `animator/` |
+| 「加字幕 / 烧字幕」 | subtitle/（不走三道门） |
+| 「做个片头 / 标题卡」 | opener/（按上下文选金/黄） |
+| 「新一期 X 系列 / 出整片」 | 全流程三道门 |
+| 「在 X 秒加 chyron / 数据卡」 | animator/ |
 
-Or invoke explicitly: ask Claude to "use the video-editor skill".
+也可以显式说「用 video-editor skill」。
 
----
+## 三道门工作流
 
-## The Three Gates workflow
+`animator/`（以及全流程）会让每条新视频在渲染前过**三道评审门**——这是本 skill 最核心的主张：在改动还便宜的时候（改文字）就 review 结构决策，而不是渲完 30 秒 + 写盘 500MB 之后才发现错。
 
-The `animator/` submodule (and by extension full-pipeline mode) runs every new video through a **three-gate review pipeline** before any rendering. This is the skill's main opinion — review structural decisions while changes are still cheap (markdown edits), not after 30 seconds of rendering + 500MB of disk write.
-
-| Gate | When | Output | Cost of failure |
+| 门 | 何时 | 产物 | 失败成本 |
 |---|---|---|---|
-| **Gate 1 · Cue plan (text)** | Before writing any HTML | Markdown table in chat | Edit 1-2 words |
-| **Gate 2 · Spec Review (HTML)** | After writing HTML, before rendering | Interactive `_review/spec_review.html` with iframe previews + decision chips + comment box | Edit HTML, ~10s reload |
-| **Gate 3 · Pre-render last call** | Spec locked, about to render | Three-part check in chat: recap + judgment calls + output format choice | Zero (nothing rendered yet) |
+| **门 1 · 文字方案** | 写 HTML 之前 | 聊天里的 markdown cue 表 | 改 1–2 个字 |
+| **门 2 · Spec Review** | 写完 HTML、渲染之前 | 可交互 `_review/spec_review.html`（iframe 预览 + 决策 chip + 评论框） | 改 HTML，约 10s 重看 |
+| **门 3 · 渲前 last call** | spec 锁定、开渲之前 | 聊天三段确认：重述方案 + judgment calls + 选输出形式 | 0（还没渲） |
 
-See [`animator/README.md`](animator/README.md) for the full workflow including cue-density baselines and add/remove feedback scripts.
+详见 [`animator/README.md`](animator/README.md)。
 
----
-
-## File structure
+## 目录结构
 
 ```
 video-editor/
-├── SKILL.md                Routing entry (Claude reads this first)
-├── CONVENTIONS.md          Visual rules: safe zones, palette, type scale, etc.
-├── README.md               You are here
-├── LICENSE                 MIT
-├── gallery.html            Open in browser for visual inventory of all templates
-│
-├── opener/                 Title card submodule
-│   ├── README.md
-│   ├── gold.html           Metallic gradient gold keyword (wipe + shimmer)
-│   ├── yellow.html         Brick-red + solid yellow (AI-series style)
-│   └── render_opener.py    Optional frame-by-frame Python renderer
-│
-├── animator/               HTML overlay templates
-│   ├── README.md           Three Gates workflow + cue baselines
-│   ├── chyron/             Keyword pop-ups (pill or underlined card)
-│   ├── cutaway/            Full-screen scenes (blank, listicle, progressive, burst)
-│   ├── review/             Spec Review template
-│   └── _hyperframes_meta/  hyperframes.json + meta.json for cue projects
-│
-├── subtitle/               Caption burning submodule
-│   ├── README.md
-│   ├── subtitles.py        PNG-overlay caption renderer (libass-free)
-│   ├── add_subtitles.py    CLI entry: video → transcribed & captioned video
-│   ├── corrections_example.txt
-│   └── requirements.txt    Just Pillow
-│
-├── themes/                 Reference docs for the visual identity
-│   ├── _base.css           Canonical structural CSS (templates inline equivalents)
-│   └── hana.css            Canonical Hana palette
-│
-└── recipes/
-    ├── compose_dual.sh.template   ffmpeg dual-output (mp4 + alpha mov)
-    ├── PITFALLS.md                 22 known pitfalls
-    └── examples.md                 Original author's worked examples (reference only)
+├── SKILL.md          路由入口（Agent 先读这个）
+├── CONVENTIONS.md    视觉规范：安全区、调色板、字号层级…
+├── README.md         你在这里（中文）
+├── README.en.md      English
+├── gallery.html      浏览器打开，看所有模板的可视化清单
+├── opener/           标题卡子模块（gold.html / yellow.html）
+├── animator/         动效模板（chyron / cutaway / review）+ 三道门
+├── subtitle/         字幕子模块（whisper 转写 + PNG overlay 烧字幕）
+├── themes/           Hana 视觉系统参考（_base.css / hana.css）
+└── recipes/          ffmpeg 双输出模板 + PITFALLS.md（22 坑）+ 案例索引
 ```
 
----
+## 主题与换肤
 
-## Theming
+默认内置一套叫 **Hana** 的视觉系统：米色底（`#FAF6EF`）+ 黄色记号笔强调（`#F2C94C`）+ 墨色字，是原作者拉美主题短视频的招牌观感。
 
-The skill ships with a single baked-in visual identity called **Hana** — cream background (`#FAF6EF`), yellow marker accent (`#F2C94C`), inked typography. This is the original author's signature look for Latin-America-themed short-form content.
+模板的颜色是**内联**写在各自 `<style>` 里的，`themes/` 目录是规范参考、不是运行时依赖。换肤：复制 `themes/hana.css` 改色值，再到各模板 `:root` 替换对应 hex（或全局 `sed`）。
 
-**Important for forkers**: the templates inline their colors directly. The `themes/` directory is a **canonical reference** documenting what the standard looks like, but it does not act as a runtime dependency.
+## 安全区
 
-To rebrand:
-1. Copy `themes/hana.css` to `themes/<your-brand>.css`, edit the color tokens
-2. In each template's `<style>` block, find the `:root` section and replace the color values to match
-3. Or globally `sed` the hex codes across all templates
+简单规则：**顶部 10% 留空、底部 15% 留空、文字别贴边**。在 1080×1920 上：
 
-A future version may extract these into linked stylesheets (see `CONVENTIONS.md § 9`), but for now templates remain self-contained so a single `cp` is enough to drop them into a project.
-
----
-
-## Safe zones
-
-Simple rule: **leave the top 10% empty, leave the bottom 15% empty, don't let text content touch the edges.** This is a craft rule (gives breathing room for platform UI variants) rather than a precise device-by-device measurement, and is generous enough to survive iPhone Dynamic Island variants + 抖音/小红书/视频号/Reels/Shorts top & bottom chrome.
-
-On a 1080×1920 canvas:
-
-| y range | Use |
+| y 范围 | 用途 |
 |---|---|
-| **0–192** (top 10%) | ⛔ No readable text/numbers/key icons — leave space for Dynamic Island, status bar, platform top UI |
-| 192–1632 (75%) | ✅ Main usable area — cards, animations, chyrons, talking head |
-| **1632–1920** (bottom 15%) | ⛔ No high-signal content — auto-captions, account chips, like/comment, product cards, CTA |
+| 0–192（顶 10%） | ⛔ 不放可读文字/数字/关键图标，留给刘海、状态栏、平台顶部 UI |
+| 192–1632（75%） | ✅ 主用区——卡片、动画、chyron、talking head |
+| 1632–1920（底 15%） | ⛔ 不放高信号内容，留给自动字幕、账号 chip、点赞评论、CTA |
 
-See `CONVENTIONS.md § 3` for ready-to-use position constants the templates already obey (chyron `top: 16%`, cutaway `top: 280px`, opener `padding-top: 280px`).
+## 不做什么
 
----
+- ❌ 实拍 stock 素材抓取 → 用 `stock-video` skill
+- ❌ 语音生成 / TTS → 用 `hyperframes` skill 的 TTS
+- ❌ 「每天一家公司」批量自动出片 → 不同形态，见 `stock-video`
+- ❌ 16:9 横屏（v2 路线图）
+- ❌ 内容合规审核 → 发布前用 `content-audit` skill
 
-## What this skill is **not**
+## Roadmap
 
-- ❌ Stock-footage scraper — use the sibling [`stock-video`](https://github.com/...) skill for Pexels / Pixabay / Mixkit / GIPHY fallback
-- ❌ Voice-over generator — use the [`hyperframes`](https://www.hyperframes.dev) skill's TTS module
-- ❌ Batch automation for "one video per company" pipelines — that's a different shape; see `stock-video`
-- ❌ 16:9 horizontal support (v2 roadmap)
-- ❌ Auto content compliance review — use the `content-audit` skill before publishing
+- 16:9 横屏支持（每个模板加横版变体 + 单独安全区）
+- 主题系统：把 CSS 抽成外链样式表，给 forker 一个中性默认主题
+- 安全区校准视频，方便用户在自己设备上验证
+- `compose.py`：流程内烧字幕（目前 `add_subtitles.py` 是后期工具）
+- Gallery 改成录制 GIF 预览，替代 live iframe
 
----
+## 由来
 
-## Roadmap (v2 ideas)
+这个 skill 是在做一系列中文 9:16 短视频时一点点攒出来的——拉美旅行（「拉美系列 / 巴西免签」）和 AI 科普（「AI 101 / Claude Code 扫盲」）。很多设计都是踩坑换来的，见 `recipes/PITFALLS.md`。
 
-- **16:9 horizontal support** — every template needs a landscape variant + separate safe zone rules
-- **Theme system A-plan** — extract CSS into linked stylesheets, ship neutral.css as default for forkers
-- **Safe zone calibration video** — committed to `examples/safe_zone_calibration/` for users to verify on their own devices
-- **`compose.py`** — in-pipeline subtitle burning (currently `add_subtitles.py` is a post-edit tool)
-- **Gallery enhancements** — recorded GIF previews instead of live iframes
-
----
-
-## Origin
-
-This skill was built incrementally while producing a series of Chinese 9:16 short-form videos on Latin America travel ("拉美系列 / 巴西免签系列") and AI literacy ("AI 101 / Claude Code 扫盲"). Many design choices encode lessons learned the hard way — see `recipes/PITFALLS.md` for the 22 most expensive mistakes.
-
-The "Hana" theme name comes from the visual language established by [@careerhannah](https://www.instagram.com/careerhannah/) on Instagram, whose layered overlay style inspired the original templates. Spelling is intentionally `Hana` (3 letters) in this codebase.
-
----
+「Hana」主题名来自 Instagram [@careerhannah](https://www.instagram.com/careerhannah/) 的叠层视觉语言，本仓库里固定拼作 `Hana`（3 个字母）。
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — 见 [LICENSE](LICENSE)。
