@@ -46,7 +46,7 @@
     background: rgba(250, 246, 239, 0.55);
     border-radius: 22px;
     padding: 28px 56px 36px 56px;
-    box-shadow: 0 14px 36px rgba(60, 40, 0, 0.14);
+    box-shadow: 0 14px 36px rgba(26, 26, 28, 0.18);
     display: inline-block;
   }
   .text {
@@ -98,6 +98,12 @@ tl.to(  "#ul", { scaleX: 1, duration: 0.28, ease: "power2.out" }, 0.18);
 tl.to(  "#cw", { opacity: 0, y: -16, duration: 0.18, ease: "power2.in" }, total - 0.18);
 
 window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
 </script>
 </body>
 </html>

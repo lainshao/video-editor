@@ -42,7 +42,7 @@
     /* 半透 cream 卡：0.55 让背景隐约透出，0.85+ 几乎不透；按内容明暗调 */
     background: rgba(250, 246, 239, 0.55);
     border-radius: 28px;
-    box-shadow: 0 18px 48px rgba(60, 40, 0, 0.14);
+    box-shadow: 0 18px 48px rgba(26, 26, 28, 0.18);
     will-change: transform, opacity;
   }
   .list { display: flex; flex-direction: column; gap: 26px; }
@@ -110,6 +110,12 @@ tl.to("#r3", { opacity: 1, x: 0, duration: 0.30, ease: "power3.out" }, 2.80);
 tl.to("#card", { opacity: 0, y: -16, duration: 0.40, ease: "power2.in" }, 4.10);
 
 window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
 </script>
 </body>
 </html>

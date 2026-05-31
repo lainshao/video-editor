@@ -70,6 +70,12 @@ tl.to(  "#cw", { opacity: 1, y: 0,  scale: 1,   duration: 0.0 }, 0.22);
 tl.to(  "#cw", { opacity: 0, y: -16, duration: 0.30, ease: "power2.in" }, 1.30);
 
 window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
 </script>
 </body>
 </html>

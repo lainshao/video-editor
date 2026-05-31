@@ -247,8 +247,8 @@
 <body>
 
 <header>
-  <h1>{{TITLE}}<span class="tag">SPEC REVIEW</span></h1>
-  <span class="meta">{{EPISODE_META}}</span>
+  <h1><span id="titleSlot">···</span><span class="tag">SPEC REVIEW</span></h1>
+  <span class="meta" id="metaSlot">···</span>
   <div class="spacer"></div>
   <span class="stats" id="stats">未决定: <b>—</b></span>
   <button class="ghost" onclick="resetAll()">清空</button>
@@ -306,7 +306,9 @@
 //   ▼▼▼  CONFIG · 调用方填这里  ▼▼▼
 // ════════════════════════════════════════════════════════════════
 
-const TOTAL_LENGTH = 0;  // 视频总时长（秒）
+const TITLE = "未命名 cue 集";          // 顶部主标题
+const EPISODE_META = "—";               // 副标（时长 / cue 数 / 系列名等）
+const TOTAL_LENGTH = 0;                 // 视频总时长（秒）
 
 const SCENES = [
   // 每个 cue 一项。删 cue 时跳号保留 id（如 1,2,3,5,6 — 别 renumber）
@@ -338,6 +340,22 @@ const DECISIONS = [
 // ════════════════════════════════════════════════════════════════
 //   ▲▲▲  CONFIG 结束 · 下面是通用渲染逻辑（一般不用改）  ▲▲▲
 // ════════════════════════════════════════════════════════════════
+
+// 注入 TITLE / EPISODE_META 到 header
+document.title = TITLE + " · Spec Review";
+document.getElementById("titleSlot").textContent = TITLE;
+document.getElementById("metaSlot").textContent = EPISODE_META;
+
+// LINT · 兜底：如果模板里还有未替换的 {{...}} 占位符，弹红色横条警告
+window.addEventListener("DOMContentLoaded", function () {
+  const remnant = document.body.innerHTML.match(/\{\{[A-Z_]+\}\}/g);
+  if (remnant && remnant.length) {
+    const banner = document.createElement("div");
+    banner.style.cssText = "background:#E0454C;color:#fff;padding:14px 32px;font-weight:700;font-size:13px;position:sticky;top:0;z-index:100;letter-spacing:0.02em;";
+    banner.textContent = "⚠ 模板有未替换的占位符 " + [...new Set(remnant)].join(" / ") + " —— Claude 漏填了，把它搬进 CONFIG 块或 sed 替换";
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+});
 
 const KIND_LABELS = {
   opener: "OPENER", cutaway: "CUTAWAY", chyron: "CHYRON",
