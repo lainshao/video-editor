@@ -188,3 +188,65 @@ themes/
 4. 切 theme = 改 `<link id="theme">` 的 href
 
 `themes/` 现在的两个文件已经是 A 方案所需的格式，将来无缝升级。
+
+---
+
+## 十、模板契约（写新模板 / 改老模板必须满足）
+
+`opener/` 和 `animator/` 下每个 `.html` 模板都必须满足以下契约，否则在 `gallery.html` / `spec_review.html` 等 iframe 预览场景会出现"黑卡"、"被切"、"溢出"等 silent bug。`recipes/lint_template.sh` 会做静态检查。
+
+### A · 结构层（必须）
+
+| 项 | 要求 | 不满足的后果 |
+|---|---|---|
+| viewport meta | `<meta name="viewport" content="width=1080, height=1920" />` | HyperFrames 渲出来分辨率不对 |
+| 根容器 | 含 `[data-composition-id="main"]` 的 `<div>`，带 `data-start` / `data-duration` / `data-width="1080"` / `data-height="1920"` 属性 | HyperFrames 找不到"渲哪一段" |
+| `<html>` / `<body>` | `width:1080px; height:1920px; overflow:hidden; background:transparent` | 渲染时多余白边 / alpha 丢失 |
+| 字体栈 | `"Inter", "Noto Sans SC", "PingFang SC", system-ui, sans-serif` 顺序（CJK 后兜底）| 中英文混排断字 |
+
+### B · 动画层（必须）
+
+| 项 | 要求 | 不满足的后果 |
+|---|---|---|
+| GSAP CDN | `<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js">` | 动画跑不起来 |
+| 时间线注册 | `window.__timelines["main"] = tl;` —— HyperFrames 通过这个对象 seek | HyperFrames 渲不出 |
+| **autoplay 钩子** | 末尾必须有：<br>`window.addEventListener("load", function () {`<br>`  if (!window.__hyperframes_runtime) { tl.play(); }`<br>`});` | **iframe 预览黑屏**（这次 cue 5-8 踩的坑）|
+
+### C · 安全区（必须）
+
+| 项 | 要求 | 不满足的后果 |
+|---|---|---|
+| 顶部文字 | `top: ≥192px` 或 `padding-top: ≥192px` | 被刘海 / 状态栏切 |
+| 底部文字 | `bottom: ≥288px` 或不进 y>1632 | 被自动字幕 / 商品卡盖 |
+| 文字宽度 | 单行文字宽度 ≤ 920px（canvas 1080 − 边距 80×2）| 字溢出 canvas（cue 9 / 11 踩过）|
+
+### D · 视觉规范（必须）
+
+| 项 | 要求 |
+|---|---|
+| `:root` 含 Hana 调色板 | `--canvas / --ink / --accent` 至少 |
+| 阴影只用中性灰 | 禁 `rgba(60,40,0,X)` brown shadow（暗背景上像金光晕）|
+| 无 debug 角标残留 | 不能留 `.scene-label` 在成片 |
+
+### E · 占位符（写模板时）
+
+| 项 | 要求 |
+|---|---|
+| 占位符语法 | `{{NAME}}` 全大写 + 下划线，如 `{{TITLE}} / {{EYEBROW}} / {{KEYWORD}}` |
+| 凡是面向使用者的可变文案/数字 | 必须做成占位符，不能 hardcode |
+| 模板顶部注释 | 必须列出全部占位符 + 推荐输入范围 |
+
+### F · 跑 lint
+
+加新模板 / 改老模板前：
+
+```bash
+bash recipes/lint_template.sh animator/chyron/my_new_chyron.html
+# 输出：
+# ✓ viewport / 根容器 / 字体栈 ...
+# ✓ GSAP / __timelines / autoplay
+# ✗ 字符串 "Lorem ipsum" 看起来是英文占位，应改用 {{...}} 占位符
+# ✗ 检测到 brown shadow rgba(60,40,0,...)，违反阴影规则
+```
+
+把每个检查项写成"过 / 不过"二元判定，绿灯才能 cp 给用户用。
