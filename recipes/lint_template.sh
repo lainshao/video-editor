@@ -88,6 +88,25 @@ check_placeholder_syntax() {
   return 0
 }
 
+check_fontsize_ladder() {
+  # CONVENTIONS.md §五 字号阶梯：font-size 必须命中固定 token，不许出现区间内任意值
+  # token = 文字阶梯 {24 32 44 56 72 96 138} ∪ icon 轨 {64 96 140} ∪ chyron 例外 {130}
+  # ⚠ 改这里前先改 CONVENTIONS §五 的表，保持单一事实源
+  local allowed=" 24 32 44 56 64 72 96 130 138 140 "
+  local bad="" s
+  for s in $(grep -oE 'font-size:\s*[0-9]+px' "$1" | grep -oE '[0-9]+' | sort -n | uniq); do
+    case "$allowed" in
+      *" $s "*) ;;
+      *) bad="$bad ${s}px" ;;
+    esac
+  done
+  if [[ -n "$bad" ]]; then
+    RUN_DETAIL="越界字号:${bad} → 收到最近 token (24/32/44/56/64/72/96/130/138/140)"
+    return 1
+  fi
+  return 0
+}
+
 check_text_overflow_risk() {
   # 启发式：找 white-space: nowrap + font-size > 100px 的 .text/.chyron-text/.line
   # 如果有就 warn（可能溢出）
@@ -122,6 +141,7 @@ lint_one() {
   run() {
     local label="$1"; shift
     local fn="$1"; shift
+    RUN_DETAIL=""   # 检查函数可往这里写一行明细，失败/警告时打印
     if $fn "$f"; then
       echo "  ${C_OK}✓${C_RST} ${label}"
     else
@@ -133,6 +153,7 @@ lint_one() {
         echo "  ${C_FAIL}✗${C_RST} ${label}"
         fails=$((fails+1))
       fi
+      [[ -n "$RUN_DETAIL" ]] && echo "      ${C_DIM}${RUN_DETAIL}${C_RST}"
     fi
   }
 
@@ -151,6 +172,7 @@ lint_one() {
   echo "${C_DIM}— 视觉规范 —${C_RST}"
   run "无 brown shadow rgba(60,40,0,…)"     check_no_brown_shadow
   run "无 <div class=\"scene-label\"> 残留" check_no_debug_label
+  run "字号命中 token 阶梯（§五）"          check_fontsize_ladder
 
   echo "${C_DIM}— 软规则（warn）—${C_RST}"
   run "占位符语法 {{UPPER_SNAKE}}"          check_placeholder_syntax
