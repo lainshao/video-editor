@@ -1,6 +1,6 @@
 # video-editor
 
-> A Claude Code skill for composing 9:16 short-form videos from a talking-head recording
+> An Agent Skill (Claude Code / OpenAI Codex) for composing 9:16 short-form videos from a talking-head recording
 > plus animated overlays — title cards, kinetic typography, full-screen data cards,
 > burned-in subtitles. Outputs an integrated MP4 preview and an optional ProRes 4444
 > alpha overlay layer for editing-software workflows.
@@ -25,6 +25,26 @@ The skill is **routing-first**: when invoked it asks what you want to do (subtit
 ---
 
 ## Quick start
+
+### Install
+
+This is an **Agent Skill** — the open `SKILL.md` format supported by both [Claude Code](https://docs.claude.com/en/docs/claude-code) and [OpenAI Codex](https://developers.openai.com/codex/skills). Clone it into your agent's skills directory:
+
+```bash
+# Claude Code
+git clone https://github.com/lainshao/video-editor.git ~/.claude/skills/video-editor
+
+# OpenAI Codex
+git clone https://github.com/lainshao/video-editor.git ~/.agents/skills/video-editor
+```
+
+Restart your agent (or start a new session) so it picks up the skill. Then just say
+"剪一下这个视频" / "帮我加字幕" / "做个片头" and it routes you to the right submodule.
+
+> **Cross-agent note**: The HTML templates, ffmpeg recipes, and Python/whisper scripts are
+> agent-agnostic. The only Claude-specific touch is the routing step, which uses Claude Code's
+> `AskUserQuestion` for a clickable menu; under Codex it degrades gracefully to a plain-text
+> question. Both engines auto-trigger the skill from the `description` keywords in `SKILL.md`.
 
 ### Dependencies
 
