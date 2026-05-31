@@ -1,0 +1,99 @@
+/*
+ * themes/_base.css — 结构性 CSS 标准参考
+ *
+ * ⚠ 这是「色卡参考书」，不是被模板实际加载的依赖文件。
+ *   模板（chyron.html / scene_blank.html 等）都是自包含的，CSS 直接写在自己里面。
+ *   这个文件的作用：定义"标准结构层应该长什么样"，写新模板时照着抄。
+ *
+ * 如果将来想把这变成真正的共享 base（A 方案），需要：
+ *   1. 写一个 bootstrap_cue.sh 自动 cp themes/ 到项目根
+ *   2. 把所有模板的结构层删掉，改成 <link href="../themes/_base.css">
+ *   3. 改 README 说明 cp 模板时必须连 themes/ 一起带
+ *
+ *  现状（C 方案）：themes/ 仅作文档，模板手抄。换皮肤要批量改模板。
+ */
+
+/* ============================================================
+ * 1. Universal reset
+ * ============================================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+ * 2. Viewport — 9:16 portrait 1080×1920
+ *    所有 video-editor 模板都按这个尺寸渲染。
+ *    HyperFrames / timecut 渲染时这个 size 决定 mp4/mov 输出分辨率。
+ * ============================================================ */
+html, body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+
+  /* TRANSPARENT BG — 必须透明，让 ProRes mov 带 alpha 通道。
+     如果改成 #FFFFFF 等实色，alpha 通道会丢失，剪辑软件叠不出透明效果。
+     例外：opener/yellow.html 不透明叠层模式可以用 #cc6b49 砖红实底。 */
+  background: transparent;
+
+  /* CJK 字体栈 — 中英文混排时优先 PingFang，英文优先 Inter */
+  font-family: "Inter", "Noto Sans SC", "PingFang SC", system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+ * 3. HyperFrames composition container
+ *    所有 video-editor 模板的根元素都标 data-composition-id="main"
+ *    HyperFrames CLI 通过这个属性识别"渲染哪一段"。
+ *    data-start / data-duration / data-width / data-height 在 <div> 标签上设。
+ * ============================================================ */
+[data-composition-id="main"] {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+}
+
+/* ============================================================
+ * 4. 9:16 平台 UI 安全区 — 详见 CONVENTIONS.md "三、9:16 平台 UI 安全区"
+ *    简单规则：顶部 10% 留空、底部 15% 留空、内容不贴边
+ *    主可用区 y = 192-1632（中间 75%）
+ *
+ *    这些常量可以在模板里直接用：
+ *      .my-card { top: 280px; }   （顶部安全位起点，比 192 更保守）
+ *      .my-footer { bottom: 320px; } （底部 ≥288px 才安全）
+ * ============================================================ */
+/* 这些是文档常量，不是实际 class，因为各模板的语义不同 */
+:root {
+  /* 安全区参考值（写模板时记住） */
+  --sz-top-empty: 192px;          /* y<192 (10%) = 不放可读内容 · Dynamic Island/状态栏/顶部 UI */
+  --sz-bottom-empty-start: 1632px; /* y>1632 (85%) = 不放可读内容 · 自动字幕/账号/CTA */
+  --sz-main-area-start: 192px;    /* 主可用区起点 */
+  --sz-main-area-end: 1632px;     /* 主可用区终点 */
+
+  /* 常用尺寸（按字号层级，详见 CONVENTIONS.md "五、字号层级"） */
+  --fs-display: 96px;     /* 主标题 96-110px */
+  --fs-h1: 48px;          /* 卡片标题 48-56px */
+  --fs-h2: 40px;          /* 段落 marker 40-48px */
+  --fs-body-l: 30px;      /* 副标 30-32px */
+  --fs-body-m: 26px;      /* 正文 26-30px */
+  --fs-caption: 22px;     /* footer 小字 22-26px（绝对下限） */
+
+  /* 通用阴影（中性灰，禁用 brown shadow） */
+  --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.18);
+  --shadow-card-soft: 0 12px 32px rgba(26, 26, 28, 0.10);
+}
+
+/* ============================================================
+ * 5. Debug helper — 渲前可以用 .scene-label 看 cue 的边界框
+ *    成片不能留这个 class，CONVENTIONS.md 八节有明确规定。
+ * ============================================================ */
+.scene-label {
+  position: absolute;
+  top: 8px; left: 8px;
+  font-size: 14px;
+  color: rgba(255, 0, 0, 0.6);
+  background: rgba(255, 255, 0, 0.3);
+  padding: 4px 8px;
+  pointer-events: none;
+  z-index: 9999;
+}

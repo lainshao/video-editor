@@ -1,0 +1,82 @@
+/*
+ * themes/hana.css — Hana 主题色板标准参考
+ *
+ * ⚠ 同 _base.css：这是「色卡参考书」，不是被模板加载的依赖。
+ *   模板里的 :root 是各自手抄一份的，将来想换皮肤需要批量改。
+ *
+ * Hana 是 video-editor 当前唯一打磨过的视觉身份——
+ * 米色底 + 黄色 marker，对应你「拉美 / 巴西 / 出海」泛文化系列的招牌。
+ *
+ * 想做新主题（比如 "AI 暗黑朋克"）：
+ *   1. 复制本文件为 themes/<name>.css
+ *   2. 把下面 :root 里的色值换掉
+ *   3. 在 CONVENTIONS.md "二、Hana 调色板"小节标注另一个 theme 存在
+ *   4. 批量改所有模板的 :root（找 "--canvas / --ink / --accent" 替换）
+ */
+
+:root {
+  /* ============================================================
+   * 主色板（Hana）
+   * ============================================================ */
+  --canvas: #FAF6EF;   /* 米底 — scene_blank / scene_listicle / chyron_underline 卡背景 */
+  --ink: #1A1A1C;      /* 深墨 — 所有主文字 */
+  --accent: #F2C94C;   /* 黄 marker — chyron 黄胶囊 / 重点强调 / underline wipe */
+
+  /* ============================================================
+   * 副色（数据 / 情绪）
+   * ============================================================ */
+  --negative: #E0454C; /* 警示红 / ❌ / 反向数据 */
+  --positive: #3FA672; /* 正向绿 / ✓ / 同意 */
+  --muted: #7C7468;    /* 次级灰 / 数据来源 footer / 标签小字 */
+  --line: #E8E2D6;     /* 边框线 / divider */
+
+  /* ============================================================
+   * Opener 专用 — 金属渐变（gold.html 用）
+   * 这 6 段是金属感的关键，少一段就掉档次。
+   * ============================================================ */
+  --gold-1: #6e5a1f;
+  --gold-2: #b89a3e;
+  --gold-3: #f5e6a8;
+  --gold-4: #d8b95a;
+  --gold-5: #8a722a;
+  --gold-6: #5a4715;
+
+  /* ============================================================
+   * Opener 专用 — Anthropic AI 系列（yellow.html 用）
+   * 砖红实底 + 纯黄实心字，不透明叠层模式。
+   * ============================================================ */
+  --anthropic-clay: #cc6b49;   /* 砖红底 */
+  --anthropic-yellow: #ffd12e; /* 纯黄实心字 */
+
+  /* ============================================================
+   * 字幕专用（subtitle/subtitles.py 渲染时用）
+   * ⚠ 当前字幕黄 #FFD320 与 chyron 黄 #F2C94C 不一致，
+   *   是历史遗留。开源前应统一进 --accent。
+   * ============================================================ */
+  --subtitle-yellow: #FFD320;   /* 字幕关键词高亮 — 待统一 */
+  --subtitle-bg: rgba(0, 0, 0, 0.65); /* 半透明黑底 alpha 165/255 ≈ 0.65 */
+
+  /* ============================================================
+   * 阴影 — Hana 风用中性灰，禁用 brown
+   * brown shadow 在暗背景上像"金色光晕"，视觉廉价
+   * ============================================================ */
+  --shadow-default: 0 10px 28px rgba(0, 0, 0, 0.18);
+  --shadow-soft:    0 12px 32px rgba(26, 26, 28, 0.10);
+  --shadow-hard-yellow: 0 8px 0 rgba(0, 0, 0, 0.85); /* chyron 黄胶囊专用偏移阴影 */
+}
+
+/*
+ * ============================================================
+ * 模板各自实际用到的子集
+ * ============================================================
+ *
+ * chyron.html              用：ink, accent, shadow-hard-yellow
+ * chyron_underline.html    用：canvas, ink, accent
+ * scene_blank.html         用：canvas, ink, accent, negative, positive, muted, line, shadow-default
+ * scene_listicle.html      用：canvas, ink, accent, muted
+ * scene_progressive_top_card.html  用：canvas, ink, accent, muted, line, shadow-soft
+ * scene_burst_emoji.html   用：accent（emoji 不用 :root 色，但黄胶囊主题用 accent）
+ * opener/gold.html         用：gold-1 ~ gold-6
+ * opener/yellow.html       用：anthropic-clay, anthropic-yellow
+ * subtitle/subtitles.py    用：subtitle-yellow, subtitle-bg（这是 Python 常量，非 CSS）
+ */

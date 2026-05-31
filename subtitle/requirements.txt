@@ -1,0 +1,3 @@
+# subtitle module dependencies (Python)
+# Plus system binaries on PATH: ffmpeg, whisper-cli
+Pillow>=10.0.0

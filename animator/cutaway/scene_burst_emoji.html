@@ -1,0 +1,194 @@
+<!doctype html>
+<!--
+  Scene Burst Emoji · broll-compose 模板
+
+  「啪啪啪」群体 emoji 涌现叠层：一堆相同主题的 emoji 错峰 pop 进画面，
+  表达密度 / 数量 / 群体感。配顶部黄胶囊大字落定主题。
+
+  ▶ 何时用：
+    - 表达"X 密度高 / X 满地都是 / X 大量涌现"的视觉冲击
+    - 拉美 04 「美洲豹密度极高」实测：22 只 🐆/🐾 啪啪啪 4.5s
+
+  ▶ 不适合：
+    - 表达"1 个稀有 / 1 个独特"的对象 → 用 chyron 或 broll-opener
+    - 数据已经讲完了不需要再视觉强化 → 直接 chyron 就够
+
+  ▶ 视觉规范：
+    - 透明背景叠在 talking head 上
+    - ❌ 不带 radial vignette 暗罩（叠人脸时视觉怪）
+    - ✅ 靠 emoji 密度 + drop-shadow 制造"扑面而来"的感觉
+    - 黄胶囊在 top 16% (y≈307) 安全区，sticks 整个 cue 时长
+    - emoji 限制在 y ∈ [760, 1380]（顶部死区 y<250 + chyron 区 + 底部死区 y>1450 全避开）
+    - 装饰元素（不带文字的纯 emoji）可以稍微进入死区边缘，但带文字 / 数字必须严格在 [250, 1450]
+
+  ▶ 用法：
+    1. 复制本文件 + _hyperframes_meta/* 到 cue 目录
+    2. 编辑 CONFIG：
+       - POSITIONS 数组 = 每个 emoji 的 x/y/rot
+       - ICONS = emoji 池（按 i % ICONS.length 循环取）
+       - LABEL = 顶部黄胶囊文字
+       - STAGGER = 每个 emoji 入场间隔（s，默认 0.06）
+       - data-duration 改成 cue 时长
+-->
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&family=Noto+Sans+SC:wght@800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root { --ink: #1A1A1C; --accent: #F2C94C; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: transparent;
+    font-family: "Noto Sans SC", "Inter", "PingFang SC", system-ui, sans-serif;
+  }
+  [data-composition-id="main"] {
+    position: relative; width: 1080px; height: 1920px;
+    background: transparent;
+  }
+
+  .jag {
+    position: absolute;
+    font-size: 130px;
+    line-height: 1;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+  }
+
+  /* 顶部黄胶囊 chyron（位置同 chyron.html 模板 top 16%，y≈307 中心，避平台 UI 死区） */
+  .label-wrap {
+    position: absolute;
+    left: 50%; top: 16%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    will-change: transform, opacity;
+  }
+  .label {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--ink);
+    font-size: 96px; font-weight: 900;
+    letter-spacing: -0.02em;
+    padding: 20px 56px;
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4),
+                0 4px 0 rgba(0,0,0,0.25);
+    line-height: 1.05;
+    white-space: nowrap;
+    transform: skewX(-4deg);
+  }
+</style>
+</head>
+<body>
+<!-- ▶ 改 data-duration 为 cue 时长（秒） -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
+
+  <!-- emoji 容器（由 JS 注入） -->
+  <div id="jaguars"></div>
+
+  <!-- 顶部黄胶囊 -->
+  <div class="label-wrap" id="lw">
+    <div class="label" id="labelText"></div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//   ▼▼▼  CONFIG · 调用方填这里  ▼▼▼
+// ════════════════════════════════════════════════════════════════
+
+// 1. 黄胶囊文字
+const LABEL = "示例 · X 密度极高";
+
+// 2. emoji 位置数组（x/y 是 emoji 中心点；rot 是旋转角度）
+//    位置约束（更新后的平台 UI 安全区）：
+//      - y >= 760（避开顶部死区 y<250 + chyron 黄胶囊区 y=237-377 + 缓冲带）
+//      - y <= 1380（避开底部平台 UI 死区 y>1450 —— 自动字幕 / 关注 CTA / 商品卡）
+//      - x 在 [0, 1080] 范围内，留 60px 边距
+//    密度 tips：20-30 个看起来"满"；< 15 个稀疏
+//    ⚠ 不要把 y 下限改回 660 / 700 —— 那里会被 chyron 黄胶囊（y≈377 底边）盖到
+const POSITIONS = [
+  // upper band (y 760-880) — 紧贴 chyron 黄胶囊下方 (y≈377)
+  { x: 80,  y: 800, rot: -12 }, { x: 280, y: 760, rot:  8 },
+  { x: 540, y: 820, rot: -6 },  { x: 760, y: 780, rot: 14 },
+  { x: 920, y: 860, rot: -10 },
+  // mid-upper band (y 880-1060)
+  { x: 180, y: 920, rot:  4 },  { x: 420, y: 980, rot: -16 },
+  { x: 680, y: 920, rot: 10 },  { x: 880, y: 1000, rot: -8 },
+  { x: 60,  y: 1040, rot: 18 },
+  // mid band (y 1060-1240)
+  { x: 320, y: 1100, rot: -4 },
+  { x: 580, y: 1140, rot: 12 }, { x: 820, y: 1180, rot: -14 },
+  { x: 140, y: 1220, rot: -8 }, { x: 1000, y: 1180, rot: 18 },
+  // lower-mid band (y 1240-1380) — 接近底部 UI 死区 y>1450 时停
+  { x: 400, y: 1280, rot: 6 },
+  { x: 700, y: 1300, rot: -12 }, { x: 940, y: 1360, rot: 10 },
+  { x: 240, y: 1340, rot: -4 },
+  { x: 540, y: 1380, rot: -18 }
+];
+
+// 3. emoji 池（按 i % ICONS.length 循环取）
+//    示例：美洲豹 = ['🐆','🐾','🐆','🐆','🐾']（豹+爪混搭 4:1）
+const ICONS = ['🐆', '🐾', '🐆', '🐆', '🐾'];
+
+// 4. 时间参数
+const BURST_START = 0.30;     // emoji 第一个开始出现的相对时间
+const STAGGER = 0.06;         // 每个 emoji 入场间隔
+const LABEL_IN = 0.45;        // 黄胶囊入场（建议 = BURST_START + 0.15）
+const PULSE_AT = 2.20;        // 黄胶囊脉冲 yoyo 时机
+const FADE_OUT_AT = 4.05;     // 整体 fade out 开始（建议 = data-duration - 0.45）
+
+// ════════════════════════════════════════════════════════════════
+//   ▲▲▲  CONFIG 结束 · 下面是通用逻辑（一般不用改）  ▲▲▲
+// ════════════════════════════════════════════════════════════════
+
+// 设置黄胶囊文字
+document.getElementById("labelText").textContent = LABEL;
+
+// 注入 emoji
+const root = document.getElementById("jaguars");
+POSITIONS.forEach((p, i) => {
+  const el = document.createElement("div");
+  el.className = "jag";
+  el.id = "j" + i;
+  el.style.left = (p.x - 65) + "px";   // emoji 130px font / 2 = 65px 半径
+  el.style.top  = (p.y - 65) + "px";
+  el.style.transform = `rotate(${p.rot}deg) scale(0)`;
+  el.textContent = ICONS[i % ICONS.length];
+  root.appendChild(el);
+});
+
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+gsap.set("#lw", { opacity: 0, y: 20 });
+
+// 啪啪啪 burst — 每只 emoji stagger pop（back.out 弹性 + scale 0→1）
+POSITIONS.forEach((_, i) => {
+  tl.to("#j" + i, {
+    scale: 1,
+    duration: 0.20,
+    ease: "back.out(2.2)"
+  }, BURST_START + i * STAGGER);
+});
+
+// 黄胶囊入场 + 脉冲
+tl.to("#lw", { opacity: 1, y: 0, duration: 0.35, ease: "back.out(1.6)" }, LABEL_IN);
+tl.to("#lw", { scale: 1.04, duration: 0.55, ease: "sine.inOut", yoyo: true, repeat: 1 }, PULSE_AT);
+
+// Fade out
+tl.to("#lw",  { opacity: 0, y: -16, duration: 0.35, ease: "power2.in" }, FADE_OUT_AT);
+tl.to("#jaguars", { opacity: 0, duration: 0.40, ease: "power2.in" }, FADE_OUT_AT);
+
+window.__timelines["main"] = tl;
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) { tl.play(); }
+});
+</script>
+</body>
+</html>

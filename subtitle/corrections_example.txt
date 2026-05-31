@@ -1,0 +1,44 @@
+# ============================================================
+# 修正词典示例 · Claude Code / 出海系列语料
+# ============================================================
+# ⚠ 这是原作者的实战语料，作为示例 + 默认 fallback 一并保留。
+#   对外部用户：可以参考格式，但里面的具体术语（Claude Code / statusline 等）
+#                跟你的内容多半无关，建议复制为 corrections_<你的系列>.txt 后改写。
+#   对原作者：保持原样可继续工作流不变。
+#
+# 格式：<错> => <对>  （一行一条，顶部到底部顺序应用，顺序重要）
+# # 开头是注释，空行忽略。
+# add_subtitles.py 默认加载本文件；--corrections 参数可指定其他文件。
+# ============================================================
+
+# --- product / brand (whisper mishears "Claude" as "cloud") ---
+cloud => Claude Code
+
+# --- /statusline command (order: longest/most-specific first) ---
+slash status line => /statusline
+slashstatus line => /statusline
+slashstatusline => /statusline
+status line => statusline
+
+# --- context vs compact (whisper hears "context" as "contact" or "compact") ---
+# "contact" is ALWAYS context:
+contact => context
+# phrase-level: compact next to a meter = context; bare "要/该 compact" stays = /compact action
+compact使用度 => context使用度
+带进度条到compact => 带进度条到context
+compact用了 => context用了
+目前的compact => 目前的context
+
+# --- terminal / misc tech terms ---
+中端 => 终端
+将你加一行 => 教你加一行
+用status查 => 用 /status 查
+不用status查 => 不用 /status 查
+# merged-clause separators (whisper joins these; add 顿号 for readability)
+显示文件夹get分支 => 显示文件夹、Git 分支
+模型名带进度条到 => 模型名、带进度条到
+get分支 => Git 分支
+git分支 => Git 分支
+# general: separate 文件夹 + Git 分支 when whisper merged them (after git/get→Git)
+文件夹Git 分支 => 文件夹、Git 分支
+prom发给你 => prompt 发给你

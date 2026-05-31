@@ -1,0 +1,525 @@
+<!doctype html>
+<!--
+  Spec Review Template — broll-compose 工作流门 2
+
+  ▶ 用法：
+    1. 复制本文件到 <project>/_review/spec_review.html
+    2. 修改 <head><title> 和 <header> 标题
+    3. 编辑 <script> 顶部 CONFIG 区：
+         - TOTAL_LENGTH = 视频总时长（秒）
+         - SCENES 数组 = 每个 cue 一项
+    4. open _review/spec_review.html 给用户审
+
+  ▶ 模板提供：
+    - sticky header（stats 计数 / 清空 / 导出反馈→ 一键复制 md）
+    - 顶部 Cue 时间窗一览表 + 总覆盖时长统计
+    - responsive grid（desktop 4 列 / tablet 3 列 / mobile 2 列）
+    - 每张 card：1080×1920 iframe 自动缩到卡片宽（scaleIframes JS 钩）
+    - 决定 chips（渲/改/删）+ 问题标签 + 评论框
+    - export markdown modal（标准结构：渲/改/删 摘要 + 详细）
+
+  ▶ 改 SCENES 数组每项的字段含义：
+    id       — cue 编号（保留稳定 id，删 cue 时跳号而不是 renumber）
+    html     — cue 源 HTML 路径（相对本文件，通常 ../_scenes/.../index.html）
+    kind     — opener | cutaway | chyron | listicle | density | stock
+    opaque   — true 时 iframe 背景用 cream（cutaway）；false 用 talking-head 暗灰渐变（叠层）
+    title    — 卡片标题（一行内）
+    sub      — 副标（位置 / 风格 / 关键参数）
+    start    — cue 在 speech 时间轴的起始秒
+    end      — cue 结束秒
+    script   — 对应口播原文（短引号）
+    warn     — 灰底警告框（judgment call / 数据来源 / 已知风险），支持 \n 换行
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>{{TITLE}} · Spec Review</title>
+<style>
+  :root {
+    --canvas: #FAF6EF;
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+    --negative: #E0454C;
+    --positive: #3FA672;
+    --muted: #7C7468;
+    --card: #FFFFFF;
+    --line: #E8E2D6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--canvas); color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Inter", system-ui, sans-serif;
+    font-feature-settings: "tnum";
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(250,246,239,0.95); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 32px; display: flex; align-items: center; gap: 24px;
+  }
+  header h1 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+  header h1 .tag {
+    background: var(--accent); color: var(--ink);
+    padding: 2px 10px; border-radius: 999px; font-size: 12px;
+    margin-left: 8px; vertical-align: middle; font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  header .stats { font-size: 13px; color: var(--muted); }
+  header .stats b { color: var(--ink); font-weight: 700; }
+  button.primary {
+    background: var(--ink); color: var(--canvas); border: 0;
+    padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.02em;
+  }
+  button.primary:hover { background: #000; }
+  button.ghost {
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--line); padding: 9px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+
+  main { max-width: 1480px; margin: 0 auto; padding: 32px; }
+  .preview-row {
+    display: flex; gap: 24px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px; margin-bottom: 32px;
+  }
+  .preview-row .desc h2 { margin: 0 0 8px 0; font-size: 18px; }
+  .preview-row .desc p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .preview-row .desc kbd {
+    background: var(--canvas); border: 1px solid var(--line);
+    padding: 2px 6px; border-radius: 4px; font-size: 12px;
+  }
+
+  .timing-table-section {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px 24px; margin-bottom: 24px;
+  }
+  .timing-table-section h2 {
+    margin: 0 0 14px; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
+  }
+  .timing-table { width: 100%; border-collapse: collapse; font-size: 14px; font-feature-settings: "tnum"; }
+  .timing-table th, .timing-table td {
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid var(--line); vertical-align: middle;
+  }
+  .timing-table th {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  .timing-table tr:last-child td { border-bottom: 0; }
+  .timing-table td.num { font-weight: 800; width: 32px; }
+  .timing-table td.timing, .timing-table td.dur {
+    font-family: -apple-system, "SF Mono", Menlo, monospace; white-space: nowrap;
+  }
+  .timing-table td.dur { color: var(--muted); }
+  .timing-table .kind-tag {
+    font-size: 10px; padding: 3px 9px; border-radius: 999px;
+    font-weight: 700; letter-spacing: 0.06em; display: inline-block;
+  }
+  .kind-opener   { background: var(--accent); color: var(--ink); }
+  .kind-cutaway  { background: #E0E7FF; color: #3730A3; }
+  .kind-chyron   { background: #DCFCE7; color: #166534; }
+  .kind-listicle { background: #FEE2E2; color: #B91C1C; }
+  .kind-density  { background: #FCE7F3; color: #9D174D; }
+  .kind-stock    { background: #F3E8FF; color: #6B21A8; }
+  .timing-summary {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+  .timing-summary b { color: var(--ink); font-weight: 700; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  @media (min-width: 1280px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 900px) and (max-width: 1279px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card.decided-render { border-color: var(--positive); border-width: 2px; }
+  .card.decided-edit   { border-color: var(--accent);   border-width: 2px; }
+  .card.decided-delete { border-color: var(--negative); border-width: 2px; }
+
+  /* 9:16 frame; iframe rendered at 1080×1920 then scaled to wrap width via JS */
+  .iframe-wrap {
+    position: relative; aspect-ratio: 9 / 16;
+    background: linear-gradient(180deg, #2a2a2c 0%, #1a1a1c 100%);
+    overflow: hidden;
+  }
+  .iframe-wrap.opaque { background: var(--canvas); }
+  .iframe-wrap iframe {
+    position: absolute; top: 0; left: 0;
+    width: 1080px; height: 1920px;
+    border: 0;
+    transform-origin: top left;
+    transform: scale(0.25);  /* JS overrides on load + resize */
+  }
+  .iframe-wrap .badge {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(26,26,28,0.85); color: var(--canvas);
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    letter-spacing: 0.04em; z-index: 5;
+  }
+  .iframe-wrap .kind {
+    position: absolute; top: 10px; right: 10px;
+    background: var(--accent); color: var(--ink);
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    z-index: 5;
+  }
+  .iframe-wrap .replay {
+    position: absolute; bottom: 10px; right: 10px;
+    background: rgba(26,26,28,0.85); color: var(--canvas);
+    font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 999px;
+    cursor: pointer; z-index: 5; border: 0;
+  }
+
+  .card .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+  .card .sub { color: var(--muted); font-size: 12px; margin-top: -6px; line-height: 1.5; }
+  .card .timing { font-size: 12px; color: var(--muted); }
+  .card .timing b { color: var(--ink); font-feature-settings: "tnum"; }
+  .card .script {
+    background: #FBF8F2; border-left: 2px solid var(--accent);
+    padding: 8px 10px; font-size: 12px; line-height: 1.5; color: var(--ink);
+    border-radius: 4px;
+  }
+  .warn {
+    background: #FFF6D9; color: #6B4F00; font-size: 11px; padding: 6px 10px;
+    border-radius: 6px; line-height: 1.4;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+    font-family: inherit; font-weight: 600;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chip:hover { border-color: var(--ink); }
+  .chip.on { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+  .chip.decision { font-weight: 700; }
+  .chip.decision.render.on { background: var(--positive); border-color: var(--positive); }
+  .chip.decision.edit.on   { background: var(--accent);   border-color: var(--accent); color: var(--ink); }
+  .chip.decision.delete.on { background: var(--negative); border-color: var(--negative); }
+
+  .label {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  textarea {
+    width: 100%; min-height: 64px; resize: vertical;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px;
+    background: #FBF8F2; color: var(--ink);
+  }
+  textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(26,26,28,0.6);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    padding: 24px;
+  }
+  .modal.show { display: flex; }
+  .modal-inner {
+    background: var(--canvas); border-radius: 16px; padding: 24px;
+    max-width: 720px; width: 100%; max-height: 80vh;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .modal-inner h2 { margin: 0; font-size: 18px; }
+  .modal-inner pre {
+    flex: 1; overflow: auto; background: #FFFFFF; border: 1px solid var(--line);
+    border-radius: 8px; padding: 16px; font-size: 12px; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-word; margin: 0;
+  }
+  .modal-inner .row { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>{{TITLE}}<span class="tag">SPEC REVIEW</span></h1>
+  <span class="meta">{{EPISODE_META}}</span>
+  <div class="spacer"></div>
+  <span class="stats" id="stats">未决定: <b>—</b></span>
+  <button class="ghost" onclick="resetAll()">清空</button>
+  <button class="primary" onclick="exportFeedback()">导出反馈 →</button>
+</header>
+
+<main>
+
+  <section class="timing-table-section">
+    <h2>⏱ Cue 时间窗一览（开渲前最后确认）</h2>
+    <table class="timing-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>时间窗</th>
+          <th>时长</th>
+          <th>类型</th>
+          <th>内容</th>
+        </tr>
+      </thead>
+      <tbody id="timing-tbody"></tbody>
+    </table>
+    <div class="timing-summary" id="timing-summary"></div>
+  </section>
+
+  <section class="preview-row">
+    <div class="desc">
+      <h2>这是 Spec Review（渲染前的设计审）</h2>
+      <p>
+        每张卡是 cue 源 HTML 的<b>实时交互预览</b>（iframe 缩到卡片宽度）。还没渲成 mp4——发现问题改 HTML 即可，<b>不浪费渲染时间</b>。<br>
+        每张卡：先点 <b>渲 / 改 HTML / 删除</b> 表态，勾问题标签，写评论。点 <kbd>↻ 重播</kbd> 可重新触发动画。<br>
+        全部决定完，点 "导出反馈" → 复制粘贴回 Claude → Claude 改 HTML 后重新打开本页验证 → 满意了再让 Claude 渲 mp4。
+      </p>
+    </div>
+  </section>
+
+  <div class="grid" id="grid"></div>
+
+</main>
+
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <h2>反馈已生成</h2>
+    <p style="margin:0;color:var(--muted);font-size:13px;">已自动复制到剪贴板。粘贴到 Claude 对话即可。</p>
+    <pre id="exportText"></pre>
+    <div class="row">
+      <button class="ghost" onclick="closeModal()">关闭</button>
+      <button class="primary" onclick="copyAgain()">再复制一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//   ▼▼▼  CONFIG · 调用方填这里  ▼▼▼
+// ════════════════════════════════════════════════════════════════
+
+const TOTAL_LENGTH = 0;  // 视频总时长（秒）
+
+const SCENES = [
+  // 每个 cue 一项。删 cue 时跳号保留 id（如 1,2,3,5,6 — 别 renumber）
+  // {
+  //   id:1, html:"../_scenes/01_opener/index.html",
+  //   kind:"opener", opaque:false,
+  //   title:"片头 · 主标题片头",
+  //   sub:"Hana 透明 alpha 叠层 · 0s 视频起始 · top-third（padding-top 280px）",
+  //   start:0.0, end:4.5,
+  //   script:"（对应口播原文，短引号引用）",
+  //   warn:"（可选）judgment call / 数据来源 / 已知风险，支持 \n 换行"
+  // },
+];
+
+// Tag / decision 选项（一般保持默认）
+// 4 大类合并版（替代旧的 10 个细标签）—— 细节走评论 textarea
+const TAGS = [
+  "内容/事实",    // = 文案不对 + 信息冗余
+  "位置/时机",    // = 位置错 + 时机不对
+  "视觉细节",    // = 标题样式不对 + 配色偏 + 字号小 + 动效弱
+  "cue 数量",    // = cue 太多 + cue 太少
+];
+const DECISIONS = [
+  { key:"render", label:"渲 ✓" },
+  { key:"edit",   label:"改 HTML" },
+  { key:"delete", label:"删除 ✗" },
+];
+
+// ════════════════════════════════════════════════════════════════
+//   ▲▲▲  CONFIG 结束 · 下面是通用渲染逻辑（一般不用改）  ▲▲▲
+// ════════════════════════════════════════════════════════════════
+
+const KIND_LABELS = {
+  opener: "OPENER", cutaway: "CUTAWAY", chyron: "CHYRON",
+  listicle: "LISTICLE", density: "DENSITY", stock: "STOCK"
+};
+
+const state = SCENES.map(s => ({
+  id: s.id, title: s.title,
+  decision: null, tags: [], comment: ""
+}));
+
+function render() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  SCENES.forEach((s, i) => {
+    const st = state[i];
+    const card = document.createElement("div");
+    card.className = "card" + (st.decision ? " decided-" + st.decision : "");
+
+    card.innerHTML = `
+      <div class="iframe-wrap ${s.opaque ? 'opaque' : ''}">
+        <span class="badge">${s.id} / ${SCENES.length}</span>
+        <span class="kind">${KIND_LABELS[s.kind] || s.kind}</span>
+        <iframe src="${s.html}" loading="lazy"></iframe>
+        <button class="replay" onclick="replay(this)">↻ 重播</button>
+      </div>
+      <div class="body">
+        <h3>${s.title}</h3>
+        <div class="sub">${s.sub}</div>
+        <div class="timing"><b>${s.start.toFixed(1)}s – ${s.end.toFixed(1)}s</b> · 时长 ${(s.end - s.start).toFixed(1)}s</div>
+        ${s.script ? `<div class="script">「${s.script}」</div>` : ""}
+        ${s.warn ? `<div class="warn">${s.warn.replace(/\n/g,'<br>')}</div>` : ""}
+
+        <div class="label">决定</div>
+        <div class="chips">
+          ${DECISIONS.map(d => `
+            <button class="chip decision ${d.key} ${st.decision===d.key?"on":""}"
+                    onclick="setDecision(${i}, '${d.key}')">${d.label}</button>
+          `).join("")}
+        </div>
+
+        <div class="label">问题标签</div>
+        <div class="chips">
+          ${TAGS.map(t => `
+            <button class="chip ${st.tags.includes(t)?"on":""}"
+                    onclick="toggleTag(${i}, '${t}')">${t}</button>
+          `).join("")}
+        </div>
+
+        <div class="label">评论</div>
+        <textarea placeholder="自由评论（可选）"
+                  oninput="setComment(${i}, this.value)">${st.comment}</textarea>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  updateStats();
+  requestAnimationFrame(scaleIframes);
+}
+
+function renderTimingTable() {
+  const tbody = document.getElementById("timing-tbody");
+  if (!tbody) return;
+  let coveredCutaway = 0, coveredOverlay = 0;
+  tbody.innerHTML = SCENES.map(s => {
+    const dur = s.end - s.start;
+    if (s.opaque) coveredCutaway += dur;
+    else coveredOverlay += dur;
+    return `
+      <tr>
+        <td class="num">${s.id}</td>
+        <td class="timing">${s.start.toFixed(1)}s – ${s.end.toFixed(1)}s</td>
+        <td class="dur">${dur.toFixed(1)}s</td>
+        <td><span class="kind-tag kind-${s.kind}">${KIND_LABELS[s.kind] || s.kind}</span></td>
+        <td>${s.title}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const summary = document.getElementById("timing-summary");
+  if (summary) {
+    const totalCovered = coveredCutaway + coveredOverlay;
+    let txt = `${SCENES.length} cue 共 <b>${totalCovered.toFixed(1)}s</b>（透明叠层 ${coveredOverlay.toFixed(1)}s + cutaway 覆盖 ${coveredCutaway.toFixed(1)}s）`;
+    if (TOTAL_LENGTH > 0) {
+      const naked = TOTAL_LENGTH - coveredCutaway;
+      txt += `<br>视频总长 <b>${TOTAL_LENGTH}s</b> · talking head 不被遮挡 <b>${naked.toFixed(1)}s</b>（${Math.round(naked / TOTAL_LENGTH * 100)}%）`;
+    }
+    summary.innerHTML = txt;
+  }
+}
+
+function replay(btn) {
+  const iframe = btn.parentElement.querySelector("iframe");
+  iframe.src = iframe.src;
+}
+
+// ★ 必须有：iframe 渲染原 1080×1920 尺寸，CSS scale 缩到 wrap 实际宽度。
+//   纯 CSS 解法（cqw/vw）会撞上 transform: scale() rejects length 的坑，
+//   所以这里用 JS 在 load + resize 时设 transform。
+//   不加这个钩 → 卡片里看到的是左上角 1/4，不是完整内容。
+function scaleIframes() {
+  document.querySelectorAll(".iframe-wrap").forEach(wrap => {
+    const iframe = wrap.querySelector("iframe");
+    if (!iframe) return;
+    const w = wrap.clientWidth;
+    if (w > 0) iframe.style.transform = "scale(" + (w / 1080) + ")";
+  });
+}
+window.addEventListener("resize", scaleIframes);
+window.addEventListener("load", scaleIframes);
+
+function setDecision(i, key) {
+  state[i].decision = state[i].decision === key ? null : key;
+  render();
+}
+function toggleTag(i, tag) {
+  const arr = state[i].tags;
+  const idx = arr.indexOf(tag);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(tag);
+  render();
+}
+function setComment(i, val) {
+  state[i].comment = val;
+  updateStats();
+}
+function updateStats() {
+  const undecided = state.filter(s => !s.decision).length;
+  const r = state.filter(s => s.decision === "render").length;
+  const e = state.filter(s => s.decision === "edit").length;
+  const d = state.filter(s => s.decision === "delete").length;
+  document.getElementById("stats").innerHTML =
+    undecided > 0
+      ? `未决定: <b>${undecided}</b> · 渲 ${r} · 改 ${e} · 删 ${d}`
+      : `<b>全部决定完</b> · 渲 ${r} · 改 ${e} · 删 ${d}`;
+}
+function resetAll() {
+  if (!confirm("清空所有决定和评论？")) return;
+  state.forEach(s => { s.decision = null; s.tags = []; s.comment = ""; });
+  render();
+}
+
+function buildMarkdown() {
+  const lines = [];
+  lines.push("# Spec Review 反馈");
+  lines.push("");
+  const r = state.filter(s => s.decision === "render").map(s => `${s.id} ${s.title}`);
+  const e = state.filter(s => s.decision === "edit").map(s => `${s.id} ${s.title}`);
+  const d = state.filter(s => s.decision === "delete").map(s => `${s.id} ${s.title}`);
+  const none = state.filter(s => !s.decision).map(s => `${s.id} ${s.title}`);
+  lines.push(`- **渲 (${r.length})**: ${r.join(" / ") || "—"}`);
+  lines.push(`- **改 HTML (${e.length})**: ${e.join(" / ") || "—"}`);
+  lines.push(`- **删除 (${d.length})**: ${d.join(" / ") || "—"}`);
+  if (none.length) lines.push(`- **未决定 (${none.length})**: ${none.join(" / ")}`);
+  lines.push("");
+  lines.push("## 详细");
+  lines.push("");
+  state.forEach(s => {
+    if (!s.decision && !s.tags.length && !s.comment.trim()) return;
+    const dLabel = { render:"渲 ✓", edit:"改 HTML", delete:"删除 ✗" }[s.decision] || "未决定";
+    lines.push(`### ${s.id}. ${s.title} — ${dLabel}`);
+    if (s.tags.length) lines.push(`标签: ${s.tags.join(" · ")}`);
+    if (s.comment.trim()) lines.push(`评论: ${s.comment.trim()}`);
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function exportFeedback() {
+  const md = buildMarkdown();
+  document.getElementById("exportText").textContent = md;
+  navigator.clipboard.writeText(md).catch(() => {});
+  document.getElementById("modal").classList.add("show");
+}
+function copyAgain() {
+  navigator.clipboard.writeText(document.getElementById("exportText").textContent);
+}
+function closeModal() {
+  document.getElementById("modal").classList.remove("show");
+}
+
+renderTimingTable();
+render();
+</script>
+</body>
+</html>

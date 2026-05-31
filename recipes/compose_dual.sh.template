@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# compose_dual.sh.template — Dual-output compose recipe.
+# COPY this template, fill in INPUTS + FILTER_CHAIN + DURATION, run.
+#
+# Produces:
+#   <out>/整片.mp4    (H.264 + AAC, speech audio + all overlays)
+#   <out>/broll层.mov (ProRes 4444 alpha, transparent gaps + opaque cutaways, no audio)
+
+set -e
+
+# ───────────────────────────────────────────────────────────────────
+# CONFIG — edit per project
+# ───────────────────────────────────────────────────────────────────
+SPEECH=/path/to/speech.mov          # talking-head source
+DURATION=122.93                     # output duration (seconds)
+OUT_DIR=/path/to/output_dir
+mkdir -p "$OUT_DIR"
+
+# Each overlay: (file, time_offset_s, enable_start_s, enable_end_s)
+# Order: chronological. Cream-bg cutaways and alpha chyrons mix freely.
+OVERLAYS=(
+  # file                    offset   enable_start enable_end
+  "title.mov                0        0            4.5"
+  "scene1.mp4               6        6            8"
+  "chyron_humble.mov        8        8            9.6"
+  "chyron_curious.mov       9.6      9.6          11.1"
+  "chyron_bold.mov          11.1     11.1         13"
+  "scene_data_bars.mp4      65       65           68"
+  # …add more cues…
+)
+
+# ───────────────────────────────────────────────────────────────────
+# Build ffmpeg input args + filter chain (auto)
+# ───────────────────────────────────────────────────────────────────
+INPUT_ARGS=""
+FILTER=""
+PREV="[0:v]"
+i=1
+for line in "${OVERLAYS[@]}"; do
+  read -r file offset estart eend <<< "$line"
+  INPUT_ARGS+=" -itsoffset $offset -i $file"
+  CUR="[$i:v]"
+  NEXT="[v$i]"
+  # format=auto preserves alpha for transparent overlays;
+  # opaque mp4 cutaways ignore it harmlessly
+  FILTER+="${PREV}${CUR}overlay=enable='between(t,$estart,$eend)':format=auto${NEXT};"
+  PREV="$NEXT"
+  i=$((i+1))
+done
+# Strip trailing semicolon, replace last [vN] with [vout]
+FILTER=$(echo "$FILTER" | sed 's/;$//')
+LAST_TAG="[v$((i-1))]"
+FILTER=$(echo "$FILTER" | sed "s|${LAST_TAG}\$|[vout]|")
+
+# ───────────────────────────────────────────────────────────────────
+# Output 1: integrated mp4 (speech base + all overlays + audio)
+# ───────────────────────────────────────────────────────────────────
+echo "▶ Composing integrated mp4…"
+ffmpeg -nostdin -y \
+  -i "$SPEECH" \
+  $INPUT_ARGS \
+  -filter_complex "$FILTER" \
+  -map "[vout]" -map 0:a \
+  -c:v libx264 -pix_fmt yuv420p -crf 20 -preset fast \
+  -c:a aac -b:a 192k -shortest \
+  "$OUT_DIR/整片.mp4"
+
+# ───────────────────────────────────────────────────────────────────
+# Output 2: alpha-only broll layer (transparent canvas base + same overlays)
+# ───────────────────────────────────────────────────────────────────
+echo "▶ Composing alpha broll layer…"
+ffmpeg -nostdin -y \
+  -f lavfi -i "color=color=black@0.0:size=1080x1920:duration=$DURATION:rate=30,format=yuva420p" \
+  $INPUT_ARGS \
+  -filter_complex "$FILTER" \
+  -map "[vout]" \
+  -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le \
+  "$OUT_DIR/broll层.mov"
+
+echo ""
+echo "✓ Done. Outputs:"
+ls -lh "$OUT_DIR"/{整片.mp4,broll层.mov}

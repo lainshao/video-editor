@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>video-editor · Gallery</title>
+<style>
+  :root {
+    --canvas: #FAF6EF;
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+    --muted: #7C7468;
+    --line: #E8E2D6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Inter", "PingFang SC", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  body { padding: 64px 48px 96px; }
+
+  header {
+    max-width: 1280px;
+    margin: 0 auto 64px;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  header .accent { color: var(--accent); }
+  header p {
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1.6;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .legend {
+    max-width: 1280px;
+    margin: 0 auto 48px;
+    padding: 24px 32px;
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.04);
+  }
+  .legend h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .legend ol {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .legend li {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .legend b { color: var(--ink); font-weight: 700; }
+
+  section.concept {
+    max-width: 1280px;
+    margin: 0 auto 56px;
+  }
+  .concept-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--line);
+  }
+  .concept-tag {
+    background: var(--accent);
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 8px;
+    transform: skewX(-4deg);
+  }
+  .concept-title {
+    font-size: 28px;
+    font-weight: 800;
+  }
+  .concept-meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin-left: auto;
+  }
+  .concept-desc {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    max-width: 800px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
+  }
+  .preview {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    background: #2a2a2a;
+    overflow: hidden;
+  }
+  .preview iframe {
+    position: absolute;
+    top: 0; left: 0;
+    /* Native 1080×1920 canvas — JS auto-scales to fit container via fitIframe() */
+    width: 1080px;
+    height: 1920px;
+    transform-origin: 0 0;
+    transform: scale(0.26); /* fallback if JS doesn't run; replaced on load */
+    border: 0;
+    pointer-events: none;
+  }
+  /* spec_review card is wider (16:10) and shows the review UI directly, not scaled */
+  .preview.no-scale {
+    aspect-ratio: 16 / 10;
+  }
+  .preview.no-scale iframe {
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+  .replay-btn {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 0;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  .replay-btn:hover { background: rgba(0, 0, 0, 0.8); }
+  .meta {
+    padding: 16px 20px 20px;
+  }
+  .meta h3 {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .meta .path {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta .desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  footer {
+    max-width: 1280px;
+    margin: 96px auto 0;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  footer code {
+    background: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>video-editor · <span class="accent">Gallery</span></h1>
+  <p>
+    所有 9 个模板按 6 个用户概念组织。每张卡 iframe 实时渲染对应模板的初始帧 / 简化预览。
+    点 <b>↻ 重播</b> 重新触发动画。
+  </p>
+</header>
+
+<div class="legend">
+  <h2>6 个核心概念</h2>
+  <ol>
+    <li>① <b>标题卡</b> · 4.5s 透明叠层片头（gold / yellow 两套视觉）</li>
+    <li>② <b>重点词弹出</b> · 1-2s 单词强调（chyron 黄胶囊 / chyron_underline 编辑感）</li>
+    <li>③ <b>列举</b> · ≤4 项并列，stagger reveal</li>
+    <li>④ <b>全屏数据卡</b> · 不透明 cutaway，每张深度讲一件事</li>
+    <li>⑤ <b>5+ 项逐个介绍</b> · 顶部安全位单卡轮播 + 末尾 recap</li>
+    <li>⑥ <b>装饰冲击</b> · 群体 emoji 叠层（特殊场景）</li>
+  </ol>
+</div>
+
+<!-- ================ ① 标题卡 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">①</span>
+    <h2 class="concept-title">标题卡 / opener</h2>
+    <span class="concept-meta">4.5s · 透明 alpha · 0s 视频起始</span>
+  </div>
+  <p class="concept-desc">
+    标题卡叠在 talking head 顶部 1/3，永远在视频 0s。两套独立视觉风：拉美/泛文化系列用金字，AI 系列用黄字。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="opener/gold.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>gold · 金字版</h3>
+        <div class="path">opener/gold.html</div>
+        <div class="desc">透明背景 + 白字主标 + 6 段金属渐变金色关键词 + wipe + shimmer。拉美 / 巴西 / 出海系列默认。</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="preview">
+        <iframe src="opener/yellow.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>yellow · 黄字版</h3>
+        <div class="path">opener/yellow.html</div>
+        <div class="desc">砖红实底 + 纯黄实心衬线字 + Anthropic 风方块 logo。AI / Claude Code "AI 101" 扫盲系列。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ② 重点词弹出 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">②</span>
+    <h2 class="concept-title">重点词弹出 / chyron</h2>
+    <span class="concept-meta">1-2s · 透明叠层 · 顶部安全位</span>
+  </div>
+  <p class="concept-desc">
+    在口播某个瞬间弹出 1-2 秒文字，强调一个词或一个数据。两种视觉：黄胶囊（强冲击）/ 米卡下划线（编辑感）。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/chyron/chyron.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>chyron · 黄胶囊</h3>
+        <div class="path">animator/chyron/chyron.html</div>
+        <div class="desc">黄底 + 4° skew + 130px 英文 / 96px 长中文 + power3.out pop 弹入。强调点、术语、特质名。</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/chyron/chyron_underline.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>chyron_underline · 下划线</h3>
+        <div class="path">animator/chyron/chyron_underline.html</div>
+        <div class="desc">半透米卡 + 关键词下黄色下划线 wipe-in。编辑/刊物感，适合长文字、不抢镜的标注。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ③ 列举 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">③</span>
+    <h2 class="concept-title">列举 / listicle</h2>
+    <span class="concept-meta">≤4 项 · 全屏 · 3-5s</span>
+  </div>
+  <p class="concept-desc">
+    口播"1, 2, 3 列举"节奏，每项就一个 label + 一句话副标。≤4 项才不挤；5+ 用概念 ⑤。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/cutaway/scene_listicle.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>scene_listicle</h3>
+        <div class="path">animator/cutaway/scene_listicle.html</div>
+        <div class="desc">半透 cream 卡 + 编号 1-4 逐行 stagger reveal。一次性占位，无叠帧风险。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ④ 全屏数据卡 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">④</span>
+    <h2 class="concept-title">全屏数据卡 / cutaway</h2>
+    <span class="concept-meta">不透明 · 覆盖 talking head · 每张深度讲一件事</span>
+  </div>
+  <p class="concept-desc">
+    切到全屏卡片展示一个数据 / 对比 / 抽象概念。每张卡深度讲一件事（≠ 列举的"短而平"）。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/cutaway/scene_blank.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>scene_blank</h3>
+        <div class="path">animator/cutaway/scene_blank.html</div>
+        <div class="desc">空白 cutaway 基底：caption fade-in + 自由内容区。最常用作"数据 / 对比 / 金句"卡的起点。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ⑤ 5+ 项逐个介绍 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">⑤</span>
+    <h2 class="concept-title">5+ 项逐个介绍 / progressive top card</h2>
+    <span class="concept-meta">≥5 项 · 顶部安全位轮播 · 末尾全屏 recap</span>
+  </div>
+  <p class="concept-desc">
+    口播逐个讲 5+ 项（景点 / 类型 / 步骤）。顶部小卡轮播显示当前讲的那个 + 进度条 + 末尾 recap。
+    主舞台留给 talking head，不打断节奏。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/cutaway/scene_progressive_top_card.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>scene_progressive_top_card</h3>
+        <div class="path">animator/cutaway/scene_progressive_top_card.html</div>
+        <div class="desc">顶部 day-strip 进度条 + 主舞台单卡切换（opacity 0↔1）+ 末尾全屏 recap。适合时间轴、地点列表、决策矩阵。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ⑥ 装饰冲击 ================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag">⑥</span>
+    <h2 class="concept-title">装饰冲击 / burst emoji</h2>
+    <span class="concept-meta">透明叠层 · 1-3s · 无文字内容</span>
+  </div>
+  <p class="concept-desc">
+    "X 密度高 / 满地都是" 的视觉冲击：群体 emoji 啪啪啪落下来。装饰性叠层，不承担说明任务。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="preview">
+        <iframe src="animator/cutaway/scene_burst_emoji.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重播</button>
+      </div>
+      <div class="meta">
+        <h3>scene_burst_emoji</h3>
+        <div class="path">animator/cutaway/scene_burst_emoji.html</div>
+        <div class="desc">透明背景 + 群体 emoji + drop-shadow + gravity fall。y ∈ [660, 1500] 避开 safe zone。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ 评审 UI（不属于"概念"但展示）================ -->
+<section class="concept">
+  <div class="concept-header">
+    <span class="concept-tag" style="background: var(--ink); color: var(--accent);">★</span>
+    <h2 class="concept-title">门 2 评审 UI · spec_review</h2>
+    <span class="concept-meta">评审工具 · 非渲染模板</span>
+  </div>
+  <p class="concept-desc">
+    三道门工作流的"门 2"——cue 写完 HTML 还没渲染时，用这个 HTML 评审页交互预览所有 cue。
+    每张卡 iframe + 决定 chip（渲 / 改 / 删）+ 4 个问题标签 + 评论框 + 一键导出反馈。
+  </p>
+  <div class="grid">
+    <div class="card" style="grid-column: span 2;">
+      <div class="preview no-scale">
+        <iframe src="animator/review/spec_review_template.html"></iframe>
+        <button class="replay-btn" onclick="reload(this)">↻ 重载</button>
+      </div>
+      <div class="meta">
+        <h3>spec_review_template</h3>
+        <div class="path">animator/review/spec_review_template.html</div>
+        <div class="desc">非 9:16 渲染模板，是浏览器评审 UI。详细用法见 animator/README.md。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  这是 <code>video-editor</code> skill 的视觉一览。<br>
+  详细文档见 <code>SKILL.md</code> · <code>CONVENTIONS.md</code> · <code>opener/README.md</code> · <code>animator/README.md</code> · <code>subtitle/README.md</code>
+</footer>
+
+<script>
+  // ── iframe 自适应缩放 ─────────────────────────────────────────
+  // 把 1080×1920 的模板缩到容器实际宽度。需要 JS 因为 grid 是弹性宽度
+  // （CSS 没法表达 "scale = container_width / 1080"）。
+  function fitIframe(preview) {
+    if (preview.classList.contains('no-scale')) return;
+    const iframe = preview.querySelector('iframe');
+    if (!iframe) return;
+    const w = preview.clientWidth;
+    if (w === 0) return;
+    const scale = w / 1080;
+    iframe.style.transform = `scale(${scale})`;
+  }
+  function fitAll() {
+    document.querySelectorAll('.preview').forEach(fitIframe);
+  }
+  window.addEventListener('load', fitAll);
+  window.addEventListener('resize', fitAll);
+
+  // ── 重播 ─────────────────────────────────────────────────────
+  function reload(btn) {
+    const iframe = btn.parentElement.querySelector('iframe');
+    iframe.src = iframe.src;
+    // iframe 重载后等它 ready 再 fit
+    iframe.addEventListener('load', () => fitIframe(btn.parentElement), { once: true });
+  }
+
+  // 每 10 秒自动重播一次所有 iframe（防止动画停在末态）
+  setInterval(() => {
+    document.querySelectorAll('.preview iframe').forEach(iframe => {
+      iframe.src = iframe.src;
+      iframe.addEventListener('load', () => fitIframe(iframe.parentElement), { once: true });
+    });
+  }, 10000);
+</script>
+
+</body>
+</html>
