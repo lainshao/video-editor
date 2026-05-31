@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, height=1920">
+<title>泰国 10 天行程示例</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 1080px; height: 1920px;
+  background: #ffffff;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+}
+[data-composition-id="main"] {
+  position: relative;
+  width: 1080px; height: 1920px;
+  background: #ffffff;
+}
+#root {
+  height: 1920px;
+  padding: 80px 60px 50px;
+  display: flex; flex-direction: column;
+}
+
+/* ── Title ── */
+.title {
+  text-align: center;
+  font-size: 110px; font-weight: 800;
+  color: #009C3B;
+  letter-spacing: 2px;
+  line-height: 1;
+  margin-bottom: 36px;
+  opacity: 0;
+}
+
+/* ── Day strip (progress bar) ── */
+.day-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 40px;
+  opacity: 0;
+}
+.day-cell {
+  flex: 1;
+  padding: 18px 4px;
+  background: #F4F0EA;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.5s ease;
+}
+.day-cell.flex2 { flex: 2; }
+.day-cell.flex4 { flex: 4; }
+.day-cell .lbl {
+  font-size: 36px; font-weight: 700;
+  color: #B8B0A6;
+  line-height: 1;
+  transition: color 0.5s ease;
+}
+.day-cell .sub {
+  font-size: 22px;
+  color: #B8B0A6;
+  margin-top: 8px;
+  transition: color 0.5s ease;
+}
+.day-cell.active {
+  background: #009C3B;
+  box-shadow: 0 8px 20px rgba(0, 156, 59, 0.35);
+}
+.day-cell.active .lbl { color: #fff; }
+.day-cell.active .sub { color: rgba(255, 255, 255, 0.88); }
+
+/* ── Phase stage: grid stacking (保证 phase-card 宽度 = day-strip) ── */
+.phase-stage {
+  flex: 1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  margin-bottom: 24px;
+}
+.phase-card {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex; flex-direction: column;
+  padding: 60px 56px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #F0F9F2 0%, #FFFFFF 80%);
+  border: 2px solid rgba(0, 156, 59, 0.18);
+  opacity: 0;
+  overflow: hidden;
+}
+
+.phase-header {
+  display: flex; align-items: baseline; gap: 28px;
+  margin-bottom: 30px;
+}
+.phase-dlabel {
+  font-size: 96px; font-weight: 800;
+  color: #009C3B;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.phase-count {
+  font-size: 32px; font-weight: 600;
+  color: #999;
+}
+.phase-title {
+  font-size: 76px; font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  margin-bottom: 24px;
+}
+.phase-desc {
+  font-size: 40px; font-weight: 500;
+  color: #555;
+  line-height: 1.45;
+  margin-bottom: 30px;
+}
+
+/* D9-10 final */
+.phase-card.final {
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 60%);
+  border: 3px solid #FFDF00;
+  position: relative;
+}
+.phase-card.final::before {
+  content: "压轴 · FINAL";
+  position: absolute;
+  top: 0; right: 0;
+  background: #FFDF00;
+  color: #009C3B;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 10px 22px;
+  border-radius: 0 0 0 16px;
+}
+
+/* Sub-items (D5-8) */
+.sub-items { display: flex; flex-direction: column; gap: 16px; margin-top: 10px; }
+.sub-item {
+  display: flex; align-items: center; gap: 24px;
+  padding: 24px 28px;
+  background: #fff;
+  border: 1.5px solid rgba(0, 156, 59, 0.2);
+  border-radius: 16px;
+}
+.sub-item .icon { font-size: 60px; flex-shrink: 0; }
+.sub-item .text { flex: 1; }
+.sub-item .title-s { font-size: 44px; font-weight: 700; color: #1a1a1a; line-height: 1.1; margin-bottom: 10px; }
+.sub-item .desc-s { font-size: 28px; font-weight: 500; color: #666; line-height: 1.35; }
+.sub-item .desc-s .accent { color: #DC2626; font-weight: 600; }
+
+.footer {
+  text-align: center;
+  font-size: 22px;
+  color: #999;
+  opacity: 0;
+}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="51.5" data-width="1080" data-height="1920">
+
+  <h1 class="title" id="title">泰国 10 天</h1>
+
+  <div class="day-strip" id="dayStrip">
+    <div class="day-cell flex2" id="ds0"><div class="lbl">D1-2</div><div class="sub">曼谷</div></div>
+    <div class="day-cell flex2" id="ds1"><div class="lbl">D3-4</div><div class="sub">清迈</div></div>
+    <div class="day-cell flex4" id="ds2"><div class="lbl">D5-8</div><div class="sub">三选一</div></div>
+    <div class="day-cell flex2" id="ds3"><div class="lbl">D9-10</div><div class="sub">返程</div></div>
+  </div>
+
+  <div class="phase-stage">
+    <div class="phase-card" id="pc0">
+      <div class="phase-header"><div class="phase-dlabel">D1-2</div><div class="phase-count">2 天</div></div>
+      <div class="phase-title">曼谷 &middot; 缓时差</div>
+      <div class="phase-desc">大皇宫、夜市 &middot; 不安排重体力</div>
+    </div>
+    <div class="phase-card" id="pc1">
+      <div class="phase-header"><div class="phase-dlabel">D3-4</div><div class="phase-count">2 天</div></div>
+      <div class="phase-title">清迈 &middot; 古城慢游</div>
+      <div class="phase-desc">寺庙 + 咖啡馆<br>人少又好拍</div>
+    </div>
+    <div class="phase-card" id="pc2">
+      <div class="phase-header"><div class="phase-dlabel">D5-8</div><div class="phase-count">4 天</div></div>
+      <div class="phase-title">三选一 &middot; 海岛段</div>
+      <div class="phase-desc">体力消耗大 &middot; 住海边</div>
+      <div class="sub-items">
+        <div class="sub-item"><span class="icon">&#x1F4F7;</span><div class="text"><div class="title-s">普吉岛 Phuket</div><div class="desc-s">拍照美哭朋友圈 &middot; <span class="accent">旺季限定</span></div></div></div>
+        <div class="sub-item"><span class="icon">&#x1F418;</span><div class="text"><div class="title-s">象岛 Koh Chang</div><div class="desc-s">看自然 &middot; 人少安静</div></div></div>
+        <div class="sub-item"><span class="icon">&#x1F334;</span><div class="text"><div class="title-s">苏梅岛 Koh Samui</div><div class="desc-s">浮潜 + 海岛跳岛</div></div></div>
+      </div>
+    </div>
+    <div class="phase-card final" id="pc3">
+      <div class="phase-header"><div class="phase-dlabel">D9-10</div><div class="phase-count">2 天 &middot; 大都会收尾</div></div>
+      <div class="phase-title">曼谷 &middot; 购物收尾</div>
+      <div class="phase-desc">按摩 &middot; 夜市 &middot; 河滨 Party</div>
+    </div>
+  </div>
+
+  <p class="footer" id="footer">数据来源：示例占位文本 placeholder &middot; 仅用于演示</p>
+
+</div>
+
+<script>
+function setActive(n) {
+  for (var i = 0; i < 4; i++) {
+    document.getElementById('ds' + i).classList.toggle('active', i === n);
+    var pc = document.getElementById('pc' + i);
+    if (i === n) {
+      gsap.to(pc, { opacity: 1, duration: 0.5, ease: "power2.out" });
+    } else {
+      gsap.to(pc, { opacity: 0, duration: 0.3, ease: "power2.in" });
+    }
+  }
+}
+
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+tl.to("#title",    { opacity: 1, duration: 0.6 }, 0.2);
+tl.to("#dayStrip", { opacity: 1, duration: 0.6 }, 0.8);
+tl.call(() => setActive(0), [], 1.5);
+tl.call(() => setActive(1), [], 10.0);
+tl.call(() => setActive(2), [], 17.0);
+tl.call(() => setActive(3), [], 44.0);
+tl.to("#footer",   { opacity: 1, duration: 0.6 }, 47.0);
+
+window.__timelines["main"] = tl;
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) { tl.play(); }
+});
+</script>
+</body>
+</html>

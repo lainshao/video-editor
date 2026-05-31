@@ -1,3 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>video-editor README preview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  body { margin: 0; background: #fff; }
+  .markdown-body {
+    box-sizing: border-box;
+    max-width: 1012px;
+    margin: 0 auto;
+    padding: 32px 48px 80px;
+  }
+  .markdown-body img { background: transparent; }
+</style>
+</head>
+<body>
+<article id="content" class="markdown-body"></article>
+<script id="md" type="text/markdown">
 # video-editor · 9:16 口播视频合成 / 标题卡 / 动效 / 字幕
 
 ![GitHub stars](https://img.shields.io/github/stars/lainshao/video-editor?style=flat-square)
@@ -195,3 +217,11 @@ video-editor/
 ## License
 
 MIT — 见 [LICENSE](LICENSE)。
+</script>
+<script>
+  const md = document.getElementById('md').textContent;
+  document.getElementById('content').innerHTML = marked.parse(md);
+  window.__rendered = true;
+</script>
+</body>
+</html>

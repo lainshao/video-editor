@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;900&family=Noto+Sans+SC:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent;
+        font-family: "Noto Sans SC", "Inter", system-ui, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+      .scene-content {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 14px;
+        padding: 280px 90px 0;
+        z-index: 2;
+        transform: translateY(-225px);   /* skill 规则：opener 上移避开 face */
+      }
+      .line {
+        font-weight: 900;
+        letter-spacing: -0.025em;
+        line-height: 1.02;
+        color: #ffffff;
+        text-shadow:
+          0 4px 0 rgba(0,0,0,0.45),
+          0 10px 28px rgba(0,0,0,0.7),
+          0 0 50px rgba(0,0,0,0.5);
+        will-change: transform, opacity;
+      }
+      .line.l1 { font-size: 168px; }
+      .line.l2 { font-size: 144px; margin-bottom: 8px; }
+
+      .keyword-wrap {
+        position: relative;
+        display: inline-block;
+        line-height: 0.95;
+        padding: 8px 0 18px;
+      }
+      .keyword {
+        font-weight: 900;
+        font-size: 200px;
+        letter-spacing: -0.02em;
+        line-height: 0.95;
+        white-space: nowrap;
+        background: linear-gradient(
+          180deg,
+          #6e5a1f 0%,
+          #b89a3e 18%,
+          #f5e6a8 42%,
+          #d8b95a 58%,
+          #8a722a 82%,
+          #5a4715 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+        filter: drop-shadow(0 6px 0 rgba(0,0,0,0.3)) drop-shadow(0 14px 26px rgba(40,28,5,0.65));
+        clip-path: inset(0 100% 0 0);
+        will-change: clip-path, transform;
+      }
+      .shine {
+        position: absolute;
+        top: 0; left: 0;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.85) 50%, transparent 70%);
+        mix-blend-mode: screen;
+        transform: translateX(-120%);
+        pointer-events: none;
+        z-index: 3;
+        filter: blur(2px);
+      }
+      .eyebrow {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.92);
+        text-shadow:
+          0 2px 8px rgba(0,0,0,0.6),
+          0 0 20px rgba(0,0,0,0.4);
+        margin-bottom: 28px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="4.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div class="scene-content">
+        <div id="eyebrow" class="eyebrow">— 示例频道 · 旅行篇</div>
+        <div id="line1" class="line l1">泰国 10 天</div>
+        <div id="line2" class="line l2">新手也能抄的</div>
+        <div class="keyword-wrap">
+          <div id="keyword" class="keyword">完整路线</div>
+          <div id="shine" class="shine"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from("#eyebrow", { y: 24, opacity: 0, duration: 0.45, ease: "power3.out" }, 0.10);
+      tl.from("#line1",   { y: 70, opacity: 0, duration: 0.55, ease: "back.out(1.4)" }, 0.22);
+      tl.from("#line2",   { y: 70, opacity: 0, duration: 0.55, ease: "back.out(1.4)" }, 0.42);
+
+      tl.fromTo("#keyword",
+        { scale: 0.86, y: 30, opacity: 0, skewX: -6, clipPath: "inset(0 100% 0 0)" },
+        { scale: 1, y: 0, opacity: 1, skewX: -6, clipPath: "inset(0 0% 0 0)",
+          duration: 0.85, ease: "expo.out" },
+        0.78);
+
+      tl.fromTo("#shine",
+        { x: "-120%" },
+        { x: "260%", duration: 0.85, ease: "power2.inOut" },
+        1.55);
+
+      tl.to("#keyword", {
+        scale: 1.015, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1
+      }, 1.7);
+
+      window.__timelines["main"] = tl;
+
+      window.addEventListener("load", function () {
+        if (!window.__hyperframes_runtime) {
+          tl.play();
+        }
+      });
+    </script>
+  </body>
+</html>
