@@ -32,7 +32,12 @@
        - 改 RECAP 配置（eyebrow / title / 时间）
        - 改 data-duration 等于整个 cue 时长
        - 可选：改 --positive 颜色 / num-badge 颜色（"不值得去"类用 --negative）
-    3. npx --yes hyperframes render --format mov --output renders/<name>.mov
+    3. 渲染（timecut 单文件直渲）：
+       npx --yes timecut index.html \
+         --duration=<秒> --fps=30 --viewport=1080,1920 \
+         --transparent-background --output=render.mov \
+         --output-options="-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le" \
+         --launch-arguments="--no-sandbox"
 -->
 <html lang="zh">
 <head>
@@ -71,7 +76,10 @@
     will-change: opacity;
   }
   .spot-card {
-    position: absolute; inset: 0;
+    /* 父 .top-slot 有显式 width/height，inset:0 这里相对安全；
+       但为统一规范 + 防 timecut/puppeteer Chromium 的 inset 解析坑，写显式 */
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(250, 246, 239, 0.94);
     border-radius: 24px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
@@ -113,7 +121,11 @@
 
   /* ── Phase B: 末尾全屏 recap ─── */
   .recap {
-    position: absolute; inset: 0;
+    /* ★ 全屏覆盖必须显式尺寸，不要 inset:0
+       —— 实战 scene_blank cue 12 用 inset:0 渲出来只覆盖 ~60%×50% */
+    position: absolute;
+    top: 0; left: 0;
+    width: 1080px; height: 1920px;
     background: var(--canvas);
     will-change: opacity;
   }

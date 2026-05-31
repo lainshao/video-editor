@@ -27,8 +27,14 @@
   [data-composition-id="main"] {
     position: relative; width: 1080px; height: 1920px;
   }
+  /* ★ 用 top:0 left:0 width:1080px height:1920px 显式尺寸，不要用 inset:0。
+     inset 在 timecut/puppeteer 用的 Chromium 上实测会让 .scene 只覆盖 ~60%×50%
+     (实战 cue 12 踩过)，原因疑似 inset shorthand + flex 内容尺寸推断的 edge case。
+     用显式 top/left/width/height 强制覆盖 1080×1920 全幅，最稳。 */
   .scene {
-    position: absolute; inset: 0;
+    position: absolute;
+    top: 0; left: 0;
+    width: 1080px; height: 1920px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     padding: 120px 80px;

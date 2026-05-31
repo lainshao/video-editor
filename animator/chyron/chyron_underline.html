@@ -10,9 +10,51 @@
        如果整句都要划线，把 prefix 留空、keyword 填整句
     2. 改 data-duration（推荐 1.0s — entrance 0.20 / underline 0.28 / hold / exit 0.18）
 
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⚠ 长文案保护（实战 cue 9/11 踩过坑，文案太长会横向溢出 canvas）
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  本模板 .text 是 `white-space: nowrap` 单行设计。字数硬上限：
+
+    | 字号    | 中文最多 | 英文最多      | 例                             |
+    |---------|----------|---------------|--------------------------------|
+    | 130px   | **6 字** | **9-10 字符** | "底层好奇心" / "Be Humble"     |
+    | 110px   | **8 字** | **12-14 字符**| "高级内功心法" / "Be Curious"  |
+    |  96px   | **9-10 字** | **15-16 字符** | "100% 恐惧 0 期待"          |
+    |  84px   | **12 字**| ~             | "在不确定中找到节奏"           |
+
+    超出会从 .card 右边溢出（.wrap 加了 max-width: 920px 限位，但 .text 自身
+    nowrap 会越过这个限位）。
+
+  ⚠ 文案超 130px 6 字时，**不要再降字号** —— 拆 2 行更视觉清晰。
+     2 行变体见下方注释片段（取消注释，删原 .text/.line 那块）。
+
+  ▶ 2 行变体（带 2 个独立 underline）—— 文案 7+ 字时启用：
+
+      <div class="wrap" id="cw">
+        <div class="card">
+          <div class="line">100% <span class="keyword">恐惧<span class="underline" id="ul1"></span></span></div>
+          <br>
+          <div class="line">0 <span class="keyword">期待<span class="underline" id="ul2"></span></span></div>
+        </div>
+      </div>
+
+      CSS 调整：
+        .line { font-size: 110px; line-height: 1.15; white-space: nowrap; }
+        .line + .line { margin-top: 16px; }
+
+      GSAP 时序：
+        tl.to("#ul1", { scaleX: 1, duration: 0.30 }, 0.30);
+        tl.to("#ul2", { scaleX: 1, duration: 0.30 }, 0.70);
+
   ▶ 多个 chyron 顺序出现时：保证 cue 之间有 ≥0.30s gap，避免字叠帧
 
-  ▶ 渲染：npx hyperframes render --format mov --output renders/chyron_underline.mov
+  ▶ 渲染（timecut 单文件直渲，hyperframes 需 init 项目骨架）：
+    npx --yes timecut index.html \
+      --duration=<秒> --fps=30 --viewport=1080,1920 \
+      --transparent-background --output=render.mov \
+      --output-options="-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le" \
+      --launch-arguments="--no-sandbox"
 -->
 <html lang="zh">
 <head>
@@ -39,6 +81,7 @@
     position: absolute;
     left: 50%; top: 18%;
     transform: translate(-50%, 0);
+    max-width: 920px;  /* ★ 安全边：canvas 1080 - 80×2 边距 = 920，超了就说明文案太长 */
     will-change: transform, opacity;
   }
   .card {

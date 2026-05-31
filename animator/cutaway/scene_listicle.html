@@ -10,7 +10,12 @@
     3. 在 timeline 里调每行的 reveal 时刻（应与口播节奏对齐）
     4. 整组退场时机（默认 outro 0.40s 在结束前）
 
-  ▶ 渲染：npx hyperframes render --format mov --output renders/scene_listicle.mov
+  ▶ 渲染（timecut 单文件直渲，hyperframes 需 init 项目骨架）：
+    npx --yes timecut index.html \
+      --duration=<秒> --fps=30 --viewport=1080,1920 \
+      --transparent-background --output=render.mov \
+      --output-options="-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le" \
+      --launch-arguments="--no-sandbox"
 -->
 <html lang="zh">
 <head>

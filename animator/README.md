@@ -46,9 +46,8 @@ speech.mov + 文案 / transcript
    ↓ 1. 转录（whisper-cli + ggml-base.bin / ggml-small.bin）
    ↓ 2. 按转录定位每个 cue 的时间和内容
    ↓ 3. 为每个 cue 决定来源：
-        a. 主标题片头  → opener/ 子模块（gold.html 或 yellow.html）
+        a. 主标题片头  → opener/ 子模块（yellow.html）
         b. HTML 动画  → cutaway/scene_blank.html 等
-        c. 实拍 stock → 调外部 stock-video skill
         d. 文字 chyron → chyron/chyron.html
         e. 列举 trio   → cutaway/scene_listicle.html
    ↓ 4. ★★ 门 1 · 文字 cue 方案预审（在对话里给表格，等用户确认）
@@ -176,9 +175,17 @@ cp ~/.claude/skills/video-editor/animator/_hyperframes_meta/* .  # hyperframes.j
 
 # 2. 编辑 index.html 改文案 / 动画 / 颜色
 
-# 3. 渲染（推荐 mov 格式 —— webm 不带 alpha，是已知坑）
-npx --yes hyperframes render --format mov --output renders/scene_X.mov
+# 3. 渲染 ProRes 4444 alpha mov（用 timecut，单文件直接渲；hyperframes 需要先 init 项目骨架）
+DUR=3.0   # cue 时长（秒）
+npx --yes timecut index.html \
+  --duration=$DUR --fps=30 --viewport=1080,1920 \
+  --transparent-background \
+  --output=render.mov \
+  --output-options="-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le" \
+  --launch-arguments="--no-sandbox"
 ```
+
+> ⚠ webm 格式不带 alpha 通道（已知坑），所以一律用 mov + ProRes 4444。详见 `../recipes/PITFALLS.md`。
 
 ## 合成（双输出）
 

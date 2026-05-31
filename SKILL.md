@@ -1,11 +1,11 @@
 ---
 name: video-editor
-description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener**（金/黄两款 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出 ① 预览整片 mp4 ② 可选 alpha 通道 broll 层 mov。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材请调 `stock-video` skill。
+description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener**（黄字衬线 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出 ① 预览整片 mp4 ② 可选 alpha 通道 broll 层 mov。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材抓取不在本 skill 范围内。
 ---
 
 # Video Editor · 视频工人
 
-把 9:16 talking-head 口播 + 叠层素材（标题 / B-roll cutaway / chyron / 字幕）合成出短视频。**自给自足**——不依赖其他 skill（实拍 stock 素材是唯一例外，调 `stock-video`）。
+把 9:16 talking-head 口播 + 叠层素材（标题 / B-roll cutaway / chyron / 字幕）合成出短视频。**自给自足**——不依赖其他 skill。实拍 stock 素材抓取不在本 skill 范围内。
 
 ## 何时触发
 
@@ -47,7 +47,7 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 | 子模块 | 干嘛 | 入口文档 |
 |---|---|---|
-| `opener/` | 4.5s 金字 / 黄字标题卡，透明 alpha 叠层 | `opener/README.md` |
+| `opener/` | 4.5s 黄字衬线标题卡，透明 alpha 叠层 | `opener/README.md` |
 | `animator/` | chyron / cutaway / listicle / spec_review，三道门工作流 | `animator/README.md` |
 | `subtitle/` | whisper 转写 → 关键词高亮 PNG overlay → 烧字幕 | `subtitle/README.md` |
 
@@ -71,7 +71,7 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 | 用户说 | 默认 = | 关键参数 |
 |---|---|---|
-| "加标题" / "title card" / "片头" / "opener" | `opener/gold.html`（金字版，拉美/泛文化）或 `opener/yellow.html`（黄字版，AI 系列） | 透明 alpha · 0s 视频起始 · top-third（padding-top 280px）· 4.5s · ProRes 4444 mov |
+| "加标题" / "title card" / "片头" / "opener" | `opener/yellow.html`（黄字衬线大标题 + 白色斜体副标题） | 透明 alpha · 0s 视频起始 · top-third（padding-top 280px）· 4.5s · ProRes 4444 mov |
 | "在 X 时刻强调某个词" / "弹出文字" | `animator/chyron/chyron.html` | 黄胶囊 · top 16% (y≈307 中心) · 1-2s pop |
 | "1, 2, 3 列举" / "三点 / 四点要素" | `animator/cutaway/scene_listicle.html` | 编号列表逐行揭示 · 卡片 top 280px |
 | "全屏数据卡 / 对比图" / "切到 X 数据" | `animator/cutaway/scene_blank.html` | 全屏白底 cutaway · caption top 280px · 不透明 mp4 |
@@ -83,14 +83,11 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 ## 配套 skill
 
-- **`stock-video`** — 实拍 stock 素材（Pexels / Pixabay / Mixkit / GIPHY 4 源 fallback + 9:16 blur-fill）。video-editor 本身**不抓 stock**，需要时调它
-- **`broll-review`** — 评审页生成器（hover-loop 视频 + 决定 chip + 评论框）。可选，animator 三道门里"门 2 spec review"内置了一个，复杂场景可调 broll-review 加强
 - **`hyperframes` / `hyperframes-cli`** — HyperFrames CLI（渲 HTML → mov/mp4），动画子模块的渲染依赖
 
 ## 不在本 skill 范围
 
-- 实拍 stock 素材抓取 → `stock-video`
-- "每天一家公司"批量自动出片 → 历史上是 b-roll-generator，现并入 `stock-video` 的批量分支
+- 实拍 stock 素材抓取（Pexels / Pixabay 等）→ 本 skill 不做
 - 16:9 横屏视频 → v2 roadmap
 - 文字稿生成 / 口播 TTS → `hyperframes` skill 的 TTS 功能
 - 内容合规审核 → `content-audit` skill

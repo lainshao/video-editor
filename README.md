@@ -13,7 +13,7 @@
 
 内置三个子模块，按需调用、不强制走全流程：
 
-- **opener · 标题卡**：4.5s 动态片头，金字（拉美/泛文化）或黄字（AI 系列）两款，透明叠在口播上。
+- **opener · 标题卡**：4.5s 动态黄字衬线标题卡（大标题 + 副标题），透明叠在口播上。
 - **animator · 动效**：弹出关键词、全屏数据卡、编号列举、多段轮播等 7 个 HTML 模板，走「三道门」评审流程，结构性错误在 0 渲染阶段就抓住。
 - **subtitle · 字幕**：whisper 自动转写 → 关键词黄色高亮 → PNG overlay 烧进画面。
 
@@ -21,7 +21,7 @@
 
 ![成品示例：标题卡 / 全屏数据卡 / 关键词弹出](assets/demo/demo_strip.png)
 
-<sub>↑ 三个子模块的真实渲染输出（占位演示文案，非真实内容）：左 = opener 金字标题卡，中 = animator 全屏行程数据卡，右 = chyron 关键词弹出 + 黄下划线。</sub>
+<sub>↑ 三个子模块的渲染输出（占位演示文案「泰国 10 天」，非真实内容）：左 = opener 黄字标题卡，中 = animator 全屏行程数据卡，右 = chyron 关键词黄胶囊弹出。</sub>
 
 ## 30 秒开始
 
@@ -47,7 +47,7 @@ https://github.com/lainshao/video-editor 克隆到我的 skills 目录
 
 ## 能做什么
 
-- 🎬 **0s 标题卡片头**：金字 / 黄字两款，透明 alpha 叠在 talking head 上，不是独立黑屏镜头
+- 🎬 **0s 标题卡片头**：黄字衬线标题卡，透明 alpha 叠在 talking head 上，不是独立黑屏镜头
 - ✨ **7 个动效模板**：关键词黄胶囊弹出、全屏数据卡、编号 1–4 列举、多段顶部轮播、群体 emoji 冲击等
 - 🔤 **关键词高亮字幕**：whisper 自动转写 + 拼写修正 + 重点词黄色高亮，PNG overlay 烧死进画面
 - 🎞 **双输出**：`_整片.mp4`（H.264 含音频，直接发）+ 可选 `_broll层.mov`（ProRes 4444 透明通道，进 Premiere / AE / FCP 叠层）
@@ -55,11 +55,32 @@ https://github.com/lainshao/video-editor 克隆到我的 skills 目录
 - 🎨 **Hana 视觉系统**：米色底 + 黄色记号笔强调 + 墨色字，可整体换肤
 - 📐 **安全区内置**：顶部 10% / 底部 15% 留空，避开刘海和各平台 UI（抖音/小红书/视频号/Reels/Shorts）
 
+## 动效模板一览
+
+7 个内置模板，对应口播里不同的视觉时刻。下面是每个模板填入占位文案（泰国 10 天旅行示例）后的渲染缩略图——浏览器打开仓库里的 `gallery.html` 可看 live 动画。
+
+<table>
+<tr>
+<td align="center" width="25%"><img src="assets/gallery/opener.png" width="190"><br><b>opener · 标题卡</b><br><sub>黄字衬线大标题 + 副标题<br>0s 透明叠层片头</sub></td>
+<td align="center" width="25%"><img src="assets/gallery/chyron.png" width="190"><br><b>chyron · 关键词胶囊</b><br><sub>黄底黑字 pop<br>1–2s 重点词强调</sub></td>
+<td align="center" width="25%"><img src="assets/gallery/chyron_underline.png" width="190"><br><b>chyron_underline · 编辑下划线</b><br><sub>cream 卡黑字 + 黄下划线 wipe<br>术语 / 强调点</sub></td>
+<td align="center" width="25%"><img src="assets/gallery/scene_listicle.png" width="190"><br><b>scene_listicle · 编号列举</b><br><sub>≤4 项 stagger reveal<br>「1、2、3」枚举语气</sub></td>
+</tr>
+<tr>
+<td align="center" width="25%"><img src="assets/gallery/scene_blank.png" width="190"><br><b>scene_blank · 全屏数据卡</b><br><sub>不透明 cutaway<br>caption + 自定义视觉</sub></td>
+<td align="center" width="25%"><img src="assets/gallery/scene_progressive_top_card.png" width="190"><br><b>scene_progressive_top_card · 渐进轮播</b><br><sub>5+ 项顶部单卡轮播<br>末尾全屏 recap</sub></td>
+<td align="center" width="25%"><img src="assets/gallery/scene_burst_emoji.png" width="190"><br><b>scene_burst_emoji · emoji 冲击</b><br><sub>群体 emoji 涌现 + 黄胶囊<br>表达密度 / 数量感</sub></td>
+<td width="25%"></td>
+</tr>
+</table>
+
+<sub>透明叠层（opener / chyron / 下划线 / emoji）这里垫了中性深灰底方便预览，实际渲染是带 alpha 的透明通道，叠在 talking head 上。</sub>
+
 ## 适合 / 不适合
 
 **✅ 合适**：9:16 竖屏口播 talking-head 视频 / 出海 / 知识科普 / 泛文化叙事 / 需要标题卡和动效字幕的短视频
 
-**❌ 不合适**：16:9 横屏（v2 路线图）/ 纯语音生成 / 实拍 stock 素材抓取（调 `stock-video`）/ 低于 30s 的碎素材
+**❌ 不合适**：16:9 横屏（v2 路线图）/ 纯语音生成 / 实拍 stock 素材抓取 / 低于 30s 的碎素材
 
 ## 常见使用场景
 
@@ -100,10 +121,12 @@ git clone https://github.com/lainshao/video-editor.git ~/.agents/skills/video-ed
 
 ### 依赖
 
+**装完先跑 `bash recipes/doctor.sh` 自检**，一眼看缺啥。手动装清单：
+
 ```bash
 brew install ffmpeg            # 合成 + 烧字幕
 brew install whisper-cpp       # 转写（命令是 whisper-cli）
-brew install node              # HyperFrames / timecut 渲染（22 ≤ Node < 25）
+brew install node              # HyperFrames / timecut 渲染（Node ≥ 22 即可，v25 已实测）
 npm install -g hyperframes     # HTML → 视频 渲染器
 pip install -r subtitle/requirements.txt   # 字幕模块只需 Pillow
 
@@ -111,16 +134,17 @@ pip install -r subtitle/requirements.txt   # 字幕模块只需 Pillow
 mkdir -p ~/.whisper-models
 curl -L -o ~/.whisper-models/ggml-large-v3-turbo.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
-```
 
-> ⚠️ Node 25 在 `timecut` / `hyperframes` 上有已知的静默初始化失败，请用 22 ≤ Node < 25。
+# 自检
+bash recipes/doctor.sh         # 8 项依赖一次性检查
+```
 
 ### 触发方式
 
 | 你说 | 派给 |
 |---|---|
 | 「加字幕 / 烧字幕」 | subtitle/（不走三道门） |
-| 「做个片头 / 标题卡」 | opener/（按上下文选金/黄） |
+| 「做个片头 / 标题卡」 | opener/（黄字衬线标题卡） |
 | 「新一期 X 系列 / 出整片」 | 全流程三道门 |
 | 「在 X 秒加 chyron / 数据卡」 | animator/ |
 
@@ -147,7 +171,7 @@ video-editor/
 ├── README.md         你在这里（中文）
 ├── README.en.md      English
 ├── gallery.html      浏览器打开，看所有模板的可视化清单
-├── opener/           标题卡子模块（gold.html / yellow.html）
+├── opener/           标题卡子模块（yellow.html）
 ├── animator/         动效模板（chyron / cutaway / review）+ 三道门
 ├── subtitle/         字幕子模块（whisper 转写 + PNG overlay 烧字幕）
 ├── themes/           Hana 视觉系统参考（_base.css / hana.css）
@@ -172,9 +196,8 @@ video-editor/
 
 ## 不做什么
 
-- ❌ 实拍 stock 素材抓取 → 用 `stock-video` skill
+- ❌ 实拍 stock 素材抓取（Pexels / Pixabay 等）→ 本 skill 不做
 - ❌ 语音生成 / TTS → 用 `hyperframes` skill 的 TTS
-- ❌ 「每天一家公司」批量自动出片 → 不同形态，见 `stock-video`
 - ❌ 16:9 横屏（v2 路线图）
 - ❌ 内容合规审核 → 发布前用 `content-audit` skill
 
@@ -188,9 +211,7 @@ video-editor/
 
 ## 由来
 
-这个 skill 是在做一系列中文 9:16 短视频时一点点攒出来的——拉美旅行（「拉美系列 / 巴西免签」）和 AI 科普（「AI 101 / Claude Code 扫盲」）。很多设计都是踩坑换来的，见 `recipes/PITFALLS.md`。
-
-「Hana」主题名来自 Instagram [@careerhannah](https://www.instagram.com/careerhannah/) 的叠层视觉语言，本仓库里固定拼作 `Hana`（3 个字母）。
+这个 skill 是在做一系列 9:16 短视频时一点点攒出来的——拉美旅行（「拉美系列 / 巴西免签」）和 AI 科普（「AI 101 / Claude Code 扫盲」）。很多设计都是踩坑换来的，见 `recipes/PITFALLS.md`。
 
 ## License
 

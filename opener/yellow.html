@@ -9,13 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       /* ───────────────────────────────────────────────────────────────
-       * VARIANT: Anthropic / AI-101 style (soojintech 同款格式)
-       *  顶部 Anthropic 陶土方块 logo + 黄色加粗衬线大标题 + 白色斜体副标题
+       * 黄字衬线标题卡（通用 9:16 口播片头）
+       *  黄色加粗衬线大标题 + 白色斜体副标题（默认不带 logo）
        *  透明叠层，叠在 9:16 talking head 上方 (top-third)
-       *  渲染：见 SKILL.md「Anthropic variant 渲染」——Node 25 用逐帧 poll-kill，
+       *  渲染：见 SKILL.md 渲染章节——Node 25 用逐帧 poll-kill，
        *        不要用 timecut（Node 25 下会挂）。
        *  占位符：{{TITLE_LINE1}} {{TITLE_LINE2}} {{SUBTITLE}}
-       *  系列默认：TITLE 固定「Claude Code」「到底怎么用？」，每集只换 SUBTITLE。
+       *  ▶ 想加品牌 logo：见下方注释掉的 .logo 规则。
        * ─────────────────────────────────────────────────────────────── */
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
@@ -29,16 +29,17 @@
         z-index: 2;
       }
 
-      /* Anthropic logo（陶土方块 + 白星芒） */
-      .logo {
-        width: 150px; height: 150px; border-radius: 30px;
-        background: #cc6b49;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-        margin-bottom: 40px;
-        will-change: transform, opacity;
-      }
-      .logo svg { width: 96px; height: 96px; }
+      /* 顶部 logo 默认不放。需要时取消下面注释、在 .scene-content 顶部加一个 <div class="logo">…</div>：
+       * .logo {
+       *   width: 150px; height: 150px; border-radius: 30px;
+       *   background: #cc6b49;
+       *   display: flex; align-items: center; justify-content: center;
+       *   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+       *   margin-bottom: 40px;
+       *   will-change: transform, opacity;
+       * }
+       * .logo svg { width: 88px; height: 88px; }
+       */
 
       /* 黄色衬线大标题 */
       .title {
@@ -65,24 +66,7 @@
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
       <div class="scene-content">
-        <div id="logo" class="logo">
-          <svg viewBox="0 0 100 100" aria-hidden="true">
-            <g fill="#ffffff">
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(0 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(30 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(60 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(90 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(120 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(150 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(180 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(210 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(240 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(270 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(300 50 50)"/>
-              <rect x="46.5" y="6" width="7" height="40" rx="3.5" transform="rotate(330 50 50)"/>
-            </g>
-          </svg>
-        </div>
+        <!-- 顶部留给 logo 的位置：默认不放任何标记。需要时在这里加一个 <div class="logo">…</div>（样式见下方注释掉的 .logo 规则）。 -->
 
         <div class="title">
           <div id="t1" class="t1">{{TITLE_LINE1}}</div>
@@ -97,7 +81,6 @@
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
 
-      tl.from("#logo", { scale: 0.4, opacity: 0, duration: 0.5, ease: "back.out(1.6)" }, 0.10);
       tl.from("#t1",   { y: 60, opacity: 0, duration: 0.55, ease: "back.out(1.4)" }, 0.40);
       tl.from("#t2",   { y: 60, opacity: 0, duration: 0.55, ease: "back.out(1.4)" }, 0.62);
       tl.from("#sub",  { y: 30, opacity: 0, duration: 0.5,  ease: "power3.out" }, 0.95);

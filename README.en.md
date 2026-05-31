@@ -17,7 +17,7 @@ You give the skill a finished talking-head recording (`speech.mov`, 9:16 portrai
 
 | Task | Submodule | How |
 |---|---|---|
-| Burn a 4.5s kinetic **title card** at 0s | `opener/` | Choose gold (metallic gradient) or yellow (Anthropic-style brick-red) variant |
+| Burn a 4.5s kinetic **title card** at 0s | `opener/` | Transparent overlay: bold yellow serif headline + white italic subtitle (`yellow.html`) |
 | Add **animated overlays** during talking head — pop-up keywords, full-screen data cards, numbered lists, multi-phase carousels | `animator/` | 7 HTML templates, GSAP-driven, rendered by HyperFrames CLI or timecut |
 | Burn **keyword-highlighted captions** onto the finished video | `subtitle/` | Auto-transcribe with whisper, apply spelling corrections, overlay PNG captions with yellow keyword highlighting |
 | Compose **dual outputs** — integrated MP4 + alpha-channel ProRes overlay layer | `recipes/compose_dual.sh.template` | ffmpeg recipe; both share the same overlay chain |
@@ -82,7 +82,7 @@ Once installed under `~/.claude/skills/video-editor/`, the skill auto-triggers w
 | You say | Goes to |
 |---|---|
 | "Add subtitles to this video" | `subtitle/` (no routing prompt) |
-| "Make me a title card" | `opener/` (chooses gold/yellow by context) |
+| "Make me a title card" | `opener/` (`yellow.html`) |
 | "New episode" / "do a full video" | Full pipeline through the Three Gates workflow |
 | "Add a chyron at X seconds" | `animator/` |
 
@@ -116,8 +116,7 @@ video-editor/
 │
 ├── opener/                 Title card submodule
 │   ├── README.md
-│   ├── gold.html           Metallic gradient gold keyword (wipe + shimmer)
-│   ├── yellow.html         Brick-red + solid yellow (AI-series style)
+│   ├── yellow.html         Transparent overlay: yellow serif headline + white italic subtitle
 │   └── render_opener.py    Optional frame-by-frame Python renderer
 │
 ├── animator/               HTML overlay templates
@@ -179,9 +178,8 @@ See `CONVENTIONS.md § 3` for ready-to-use position constants the templates alre
 
 ## What this skill is **not**
 
-- ❌ Stock-footage scraper — use the sibling [`stock-video`](https://github.com/...) skill for Pexels / Pixabay / Mixkit / GIPHY fallback
+- ❌ Stock-footage scraper (Pexels / Pixabay etc.) — out of scope for this skill
 - ❌ Voice-over generator — use the [`hyperframes`](https://www.hyperframes.dev) skill's TTS module
-- ❌ Batch automation for "one video per company" pipelines — that's a different shape; see `stock-video`
 - ❌ 16:9 horizontal support (v2 roadmap)
 - ❌ Auto content compliance review — use the `content-audit` skill before publishing
 
@@ -200,8 +198,6 @@ See `CONVENTIONS.md § 3` for ready-to-use position constants the templates alre
 ## Origin
 
 This skill was built incrementally while producing a series of Chinese 9:16 short-form videos on Latin America travel ("拉美系列 / 巴西免签系列") and AI literacy ("AI 101 / Claude Code 扫盲"). Many design choices encode lessons learned the hard way — see `recipes/PITFALLS.md` for the 22 most expensive mistakes.
-
-The "Hana" theme name comes from the visual language established by [@careerhannah](https://www.instagram.com/careerhannah/) on Instagram, whose layered overlay style inspired the original templates. Spelling is intentionally `Hana` (3 letters) in this codebase.
 
 ---
 
