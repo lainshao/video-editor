@@ -41,7 +41,52 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 | "新一期 X 系列" / "做一期视频" / "出整片" | 4 · 全流程 |
 | 上下文已经在做整片，想加 chyron / cutaway | 3 · animator/ |
 
-**关键原则**：1、2 是单点操作，**不走三道门**；3、4 必须走三道门（详见 `animator/README.md`）。
+**关键原则**：1、2 是单点操作，**不走三道门**；3、4 必须走三道门。
+
+---
+
+## ★ 三道门工作流（选项 3、4 必走，不许跳）
+
+**⚠ 路由选项不是渲染许可**——用户选了 3 或 4 只代表"想走 animator 流程"。**进 animator 之后必须按三道门走，每道门 STOP 等用户明确确认才能进下一步**。即使用户已经告诉你标题 / cue 数 / 文案，**也不代表他允许你跳门**。
+
+```
+门 1 · 文字方案      ─►  在 chat 里给 markdown cue 表
+                         STOP · 等用户回「OK / 改 X / 砍 Y / 锁定」之类明确表达
+                         ❌ 不要写任何 cue HTML
+                         ❌ 不要开始渲染
+                              │
+门 2 · Spec Review   ─►  写每个 cue 的 HTML + 生成 _review/spec_review.html
+                         STOP · 告诉用户「打开 file:///<project>/_review/spec_review.html 看，反馈后回我」
+                         ❌ 不要渲染 ProRes mov
+                         ❌ 不要 compose 整片
+                              │
+门 3 · 渲前 last call ─►  AskUserQuestion: recap + judgment calls + 输出形式三选一
+                          STOP · 等用户选完
+                          ❌ 不要预设输出形式
+                              │
+渲染 + compose + 字幕
+```
+
+**用户没说"锁定 / 确认 / 开始 / 渲 / OK"等明确肯定表达之前，你都还在前一道门。**
+
+### ❌ 反例（不要这么干）
+
+| 错误行为 | 损失 |
+|---|---|
+| 用户选了 4 + 给了标题 → 你直接抽口播 + 转录 + 写 HTML + 渲染 | 跳过门 1 "改 1-2 行字就修"的最便宜 checkpoint，省 5-10 min + 10k token |
+| 用户说"我要这样" → 你判断"既然他要那就直接开渲" | 跳过门 2，HTML 视觉/字号错了重渲贵 5 倍（30s 渲 × 失败次数） |
+| 用户在门 2 反馈"cue 3 改 X" → 改完直接渲 | 跳过门 3 last call，没让用户挑输出形式（mp4 only / 双输出 / broll only），可能多渲 500MB ProRes |
+| 用户没说肯定 → 你猜他想推进就推进 | 用户审视未完成，渲出来跑偏要重做整轮 |
+
+### ✅ 正例
+
+> "进入 animator。先转录 + 出 cue plan markdown 表给你看。**这是门 1**——不写 HTML 不渲染，等你回 OK / 改 / 砍。"
+
+每道门结束都用类似句式 explicit 告诉用户"现在到门 X，等你 OK"——别默默推进。
+
+详细流程 + 各门具体产物清单 + cue 数量 baseline 见 `animator/README.md`。
+
+---
 
 ## 子模块入口
 

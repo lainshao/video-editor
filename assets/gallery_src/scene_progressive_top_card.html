@@ -1,0 +1,330 @@
+<!doctype html>
+<!--
+  Progressive Top Card · broll-compose 模板
+
+  长信息（5+ 项）的"渐进式"叠层：每个项目对应口播说到那一段才出现，
+  最后 2-3s phase B 全屏 recap 展示所有项。
+
+  ▶ 何时用：
+    - 口播逐个介绍 5+ 个 spot / 理由 / 类型 / 步骤
+    - 不适合一锤 6s+ 全屏 listicle（节奏断、阻塞 talking head 太久）
+    - 拉美 04「5 大景点」实测：50.7s 进式 > 6.5s 全屏
+
+  ▶ 不适合：
+    - 总项目数 ≤ 3 项 → 用 scene_listicle.html 全屏一次性出更利落
+    - 每项口播时间 < 5s → stagger 间隔太密、看不清
+
+  ▶ 视觉规范（沿用本期定稿）：
+    - 卡片位置 top: 280px / height: 300px（顶边 y=280 紧贴顶部死区 y<250 之下）
+      num-badge offset top:-18 → badge 顶边 y=262，仍在 250 安全线之外
+    - recap-header top: 280px（eyebrow 在 y=280，避开顶部死区）
+    - recap-footer bottom: 500px（footer 在 y≈1420，避开底部死区 y>1450 —— 自动字幕 / UI）
+    - 卡内 emoji 140 / name 64 / sub 26 / num-badge 26
+    - 卡 bg rgba(250,246,239,0.94) 半透 cream
+    - 入场 back.out(1.6) 弹性 / 退场 power2.in
+    - phase B 全屏 cream 底（var --canvas）
+
+  ▶ 用法：
+    1. 复制本文件 + _hyperframes_meta/* 到 cue 目录
+    2. 编辑 <script> 顶部 CONFIG：
+       - 改 SPOTS 数组（icon emoji / name / sub）
+       - 改 BEATS 数组（每项 in/out 相对 cue 起始的秒数）
+       - 改 RECAP 配置（eyebrow / title / 时间）
+       - 改 data-duration 等于整个 cue 时长
+       - 可选：改 --positive 颜色 / num-badge 颜色（"不值得去"类用 --negative）
+    3. npx --yes hyperframes render --format mov --output renders/<name>.mov
+-->
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&family=Noto+Sans+SC:wght@800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --canvas: #FAF6EF;
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+    --positive: #3FA672;
+    --negative: #E0454C;
+    --muted: #7C7468;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: transparent;
+    font-family: "Noto Sans SC", "Inter", "PingFang SC", system-ui, sans-serif;
+    color: var(--ink);
+  }
+  [data-composition-id="main"] {
+    position: relative; width: 1080px; height: 1920px;
+    background: transparent;
+  }
+
+  /* ── Phase A: 顶部安全位渐进卡 ─── */
+  /* top=280 紧贴 chyron 下方；height=300 留 talking head 空间 + 平台 UI 安全区 */
+  .top-slot {
+    position: absolute;
+    left: 80px; right: 80px;
+    top: 280px;
+    height: 300px;
+    will-change: opacity;
+  }
+  .spot-card {
+    position: absolute; inset: 0;
+    background: rgba(250, 246, 239, 0.94);
+    border-radius: 24px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    padding: 36px 42px;
+    display: flex; align-items: center; gap: 32px;
+    will-change: opacity, transform;
+  }
+  .spot-card .icon {
+    font-size: 140px; line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 5px 12px rgba(26, 26, 28, 0.28));
+    will-change: transform;
+  }
+  .spot-card .text { flex: 1; min-width: 0; }
+  .spot-card .name {
+    font-size: 72px; font-weight: 900;   /* H1 基准（原 64 → 与 listicle 项名统一）*/
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 16px;
+  }
+  .spot-card .sub {
+    font-size: 26px; font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0;
+    line-height: 1.3;
+  }
+  .spot-card .num-badge {
+    position: absolute;
+    top: -18px; left: 28px;
+    background: var(--accent);   /* 改 --negative 用于"不值得去"类红色 */
+    color: var(--ink);
+    font-size: 26px; font-weight: 900;
+    letter-spacing: 0.08em;
+    padding: 6px 18px;
+    border-radius: 999px;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.18);
+  }
+
+  /* ── Phase B: 末尾全屏 recap ─── */
+  .recap {
+    position: absolute; inset: 0;
+    background: var(--canvas);
+    will-change: opacity;
+  }
+  .recap-header {
+    position: absolute;
+    /* top=280: eyebrow 起始 y=280，避开顶部 UI 死区 y<250 */
+    top: 280px; left: 80px; right: 80px;   /* 横向边距统一 80 */
+    text-align: center;
+  }
+  .recap-eyebrow {
+    font-size: 30px; font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--positive);   /* 改 --negative 用于"不值得去" */
+    margin-bottom: 18px;
+  }
+  .recap-title {
+    font-size: 96px; font-weight: 900;   /* Display token */
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--ink);
+    max-width: 840px; margin: 0 auto;   /* 长标题不撑满左右（CONVENTIONS 五·B）*/
+  }
+  .recap-title .mark { color: var(--positive); margin-right: 14px; }
+  .recap-card {
+    position: absolute;
+    /* top=520: 跟新的 recap-header（top=280）保持原有 240px 间隔 */
+    top: 520px; left: 80px; right: 80px;   /* 横向边距统一 80 */
+    padding: 48px;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 32px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+  }
+  .recap-list { display: flex; flex-direction: column; gap: 28px; }
+  .recap-row {
+    display: flex; align-items: center; gap: 28px;
+    will-change: opacity, transform;
+  }
+  .recap-icon {
+    width: 100px; height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 78px; line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 10px rgba(26, 26, 28, 0.22));
+  }
+  .recap-text {
+    font-size: 72px; font-weight: 900;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    flex: 1;
+  }
+  .recap-text .recap-sub {
+    display: block;
+    font-size: 30px; font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0;
+    margin-top: 6px;
+  }
+  .recap-footer {
+    position: absolute;
+    /* bottom=500: footer baseline ≈ y=1420，避开底部 UI 死区 y>1450
+       （自动字幕 / 账号名 / 点赞 / 关注 CTA / 商品卡） */
+    bottom: 500px; left: 0; right: 0;
+    text-align: center;
+    font-size: 26px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<!-- ▶ 改 data-duration 为整个 cue 时长（秒） -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="50.7" data-width="1080" data-height="1920">
+
+  <!-- ── Phase A: 渐进卡片槽（卡片由 JS 注入）── -->
+  <div class="top-slot" id="slot"></div>
+
+  <!-- ── Phase B: 末尾全屏 recap（内容由 JS 注入）── -->
+  <div class="recap" id="recap">
+    <div class="recap-header">
+      <div class="recap-eyebrow" id="recapEyebrow"></div>
+      <div class="recap-title"><span class="mark" id="recapMark"></span><span id="recapTitleText"></span></div>
+    </div>
+    <div class="recap-card">
+      <div class="recap-list" id="recapList"></div>
+    </div>
+    <div class="recap-footer" id="recapFooter"></div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//   ▼▼▼  CONFIG · 调用方填这里  ▼▼▼
+// ════════════════════════════════════════════════════════════════
+
+// 1. 每个 spot 项：编号 / emoji / 名称 / 副标（位置 / 限定 / 关键参数）
+const SPOTS = [
+  { num: "01", icon: "🛕",   name: "示例 · 曼谷",   sub: "占位副标 · 缓时差 · 大皇宫 + 夜市" },
+  { num: "02", icon: "☕",   name: "示例 · 清迈",   sub: "占位副标 · 古城慢游 · 寺庙 + 咖啡" },
+  { num: "03", icon: "🏝️",  name: "示例 · 海岛段", sub: "占位副标 · 三选一 · 普吉 / 象岛 / 苏梅" },
+  { num: "04", icon: "💆",   name: "示例 · 按摩",   sub: "占位副标 · 收尾放松 · 夜市河滨" },
+  { num: "05", icon: "✈️",   name: "示例 · 返程",   sub: "占位副标 · 购物收尾 · 机场退税" },
+];
+
+// 2. 每项 in / out 相对 cue 起始的秒数。下一个 in 应略大于上一个 out（避免叠帧鬼影）
+//    Tip: 时间表对齐口播 SRT 中相应"第 N..."的时间戳
+const BEATS = [
+  { in: 0.2,  out: 14.8 },
+  { in: 15.8, out: 28.2 },
+  { in: 28.6, out: 37.0 },
+  { in: 37.4, out: 45.0 },
+  { in: 45.4, out: 48.5 },
+];
+
+// 3. Phase B recap 配置
+const RECAP = {
+  eyebrow: "示例 · 完整路线",
+  mark: "✓",
+  title: "泰国 10 天",
+  footer: "示例占位文本 placeholder · 仅用于演示",
+  in: 48.7,
+  out: 50.3,
+  rowStagger: 0.20,
+};
+
+// ════════════════════════════════════════════════════════════════
+//   ▲▲▲  CONFIG 结束 · 下面是通用逻辑（一般不用改）  ▲▲▲
+// ════════════════════════════════════════════════════════════════
+
+// 注入 Phase A 卡片
+const slot = document.getElementById("slot");
+SPOTS.forEach((s, i) => {
+  const c = document.createElement("div");
+  c.className = "spot-card";
+  c.id = "card" + (i + 1);
+  c.innerHTML = `
+    <div class="num-badge">${s.num}</div>
+    <div class="icon">${s.icon}</div>
+    <div class="text">
+      <div class="name">${s.name}</div>
+      <div class="sub">${s.sub}</div>
+    </div>
+  `;
+  slot.appendChild(c);
+});
+
+// 注入 Phase B recap
+document.getElementById("recapEyebrow").textContent = RECAP.eyebrow;
+document.getElementById("recapMark").textContent = RECAP.mark;
+document.getElementById("recapTitleText").textContent = RECAP.title;
+document.getElementById("recapFooter").textContent = RECAP.footer;
+
+const recapList = document.getElementById("recapList");
+SPOTS.forEach((s, i) => {
+  const r = document.createElement("div");
+  r.className = "recap-row";
+  r.id = "rr" + (i + 1);
+  r.innerHTML = `
+    <div class="recap-icon">${s.icon}</div>
+    <div class="recap-text">${s.name.replace(/^示例\s*·\s*/, "")}<span class="recap-sub">${s.sub}</span></div>
+  `;
+  recapList.appendChild(r);
+});
+
+// GSAP timeline
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+// 初始状态：所有 spot 卡 + recap 隐藏
+const cardIds = SPOTS.map((_, i) => "#card" + (i + 1)).join(", ");
+const rrIds = SPOTS.map((_, i) => "#rr" + (i + 1)).join(", ");
+gsap.set(cardIds, { opacity: 0, y: 40, scale: 0.95 });
+gsap.set("#recap", { opacity: 0 });
+gsap.set(rrIds, { opacity: 0, x: -40 });
+
+// Phase A: 每个 spot 卡 pop in → hold → pop out（彼此可短暂重叠）
+BEATS.forEach((b, i) => {
+  const id = "#card" + (i + 1);
+  tl.to(id, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, b.in);
+  tl.to(id, { opacity: 0, y: -16, scale: 0.97, duration: 0.40, ease: "power2.in" }, b.out);
+});
+
+// Phase B: recap 全屏入 → 5 行 stagger reveal → 出
+tl.to("#recap", { opacity: 1, duration: 0.40, ease: "power2.out" }, RECAP.in);
+SPOTS.forEach((_, i) => {
+  tl.to("#rr" + (i + 1), {
+    opacity: 1, x: 0, duration: 0.30, ease: "power3.out"
+  }, RECAP.in + 0.15 + i * RECAP.rowStagger);
+});
+tl.to("#recap", { opacity: 0, duration: 0.40, ease: "power2.in" }, RECAP.out);
+
+window.__timelines["main"] = tl;
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) { tl.play(); }
+});
+</script>
+
+<script>
+/* gallery render shim: ?t=SECONDS seeks the main timeline to a hero frame and pauses.
+   Set __hyperframes_runtime at parse time so the template's own autoplay fallback skips. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (!p.has("t")) return;
+  window.__hyperframes_runtime = true;
+  window.addEventListener("load", function () {
+    var tl = window.__timelines && window.__timelines.main;
+    if (tl) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
+  });
+})();
+</script>
+</body>
+</html>

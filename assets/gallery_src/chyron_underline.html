@@ -1,0 +1,123 @@
+<!doctype html>
+<!--
+  Chyron template: 编辑感下划线（B 风）
+  黑字 cream 卡 + 关键词下黄色下划线 wipe-in。
+  比黄底胶囊（chyron.html）更"编辑刊物"感，适合术语首次出现 / 强调点。
+
+  ▶ 编辑：
+    1. 替换 清迈 古城必去（前缀文字 + 高亮关键词）
+       例："Be" + "Humble" → "Be Humble"，划线只在 Humble 下面
+       如果整句都要划线，把 prefix 留空、keyword 填整句
+    2. 改 data-duration（推荐 1.0s — entrance 0.20 / underline 0.28 / hold / exit 0.18）
+
+  ▶ 多个 chyron 顺序出现时：保证 cue 之间有 ≥0.30s gap，避免字叠帧
+
+  ▶ 渲染：npx hyperframes render --format mov --output renders/chyron_underline.mov
+-->
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --canvas: #FAF6EF;
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: transparent;
+    font-family: "Inter", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+    color: var(--ink);
+  }
+  [data-composition-id="main"] { position: relative; width: 1080px; height: 1920px; }
+
+  .wrap {
+    position: absolute;
+    left: 50%; top: 18%;
+    transform: translate(-50%, 0);
+    will-change: transform, opacity;
+  }
+  .card {
+    /* 半透 cream 卡：0.55 让背景隐约透出，0.85+ 几乎不透；按内容明暗调 */
+    background: rgba(250, 246, 239, 0.55);
+    border-radius: 22px;
+    padding: 28px 56px 36px 56px;
+    box-shadow: 0 14px 36px rgba(26, 26, 28, 0.18);
+    display: inline-block;
+  }
+  .text {
+    font-size: 132px; font-weight: 900;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    line-height: 1;
+    white-space: nowrap;
+    position: relative;
+    display: inline-block;
+  }
+  .keyword {
+    position: relative;
+    display: inline-block;
+  }
+  .underline {
+    position: absolute;
+    left: -6px; right: -6px;
+    bottom: -2px;
+    height: 24px;
+    background: var(--accent);
+    border-radius: 4px;
+    z-index: -1;
+    transform: scaleX(0);
+    transform-origin: left center;
+    will-change: transform;
+  }
+</style>
+</head>
+<body>
+<!-- ▶ 改 data-duration（推荐 1.0s） -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="1.0" data-width="1080" data-height="1920">
+  <div class="wrap" id="cw">
+    <div class="card">
+      <!-- ▶ 替换 清迈 和 古城必去；prefix 可留空 -->
+      <div class="text">清迈 <span class="keyword">古城必去<span class="underline" id="ul"></span></span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+const total = 1.0;
+
+tl.from("#cw", { opacity: 0, y: 20, scale: 0.95, duration: 0.20, ease: "power3.out" }, 0.0);
+tl.to(  "#ul", { scaleX: 1, duration: 0.28, ease: "power2.out" }, 0.18);
+tl.to(  "#cw", { opacity: 0, y: -16, duration: 0.18, ease: "power2.in" }, total - 0.18);
+
+window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
+</script>
+
+<script>
+/* gallery render shim: ?t=SECONDS seeks the main timeline to a hero frame and pauses.
+   Set __hyperframes_runtime at parse time so the template's own autoplay fallback skips. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (!p.has("t")) return;
+  window.__hyperframes_runtime = true;
+  window.addEventListener("load", function () {
+    var tl = window.__timelines && window.__timelines.main;
+    if (tl) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
+  });
+})();
+</script>
+</body>
+</html>

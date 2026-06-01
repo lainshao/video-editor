@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: transparent;
+    font-family: "Inter", "PingFang SC", system-ui, -apple-system, sans-serif;
+  }
+  [data-composition-id="main"] {
+    position: relative; width: 1080px; height: 1920px;
+  }
+  /* TOP POSITIONING — y=16% center (≈y=307)，避开 y<250 的平台 UI 死区
+     （Dynamic Island / 状态栏 / 关注按钮）。
+     pill 高度约 140px → 顶边 ≈ y=237、底边 ≈ y=377，处于"顶部叠层起点带"。
+     ★ 不要把 top 改回 5% / 10% — 历史上反复被用户抱怨"被刘海切了"。 */
+  .chyron-wrap {
+    position: absolute;
+    left: 50%; top: 16%;
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity;
+  }
+  .chyron-text {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--ink);
+    /* SIZE RULE:
+         English (≤6 char): 130px
+         Long Chinese (5+ chars): 96px
+         Same type/language MUST share size — never mix */
+    font-size: 130px; font-weight: 900;
+    letter-spacing: -0.02em;
+    padding: 18px 52px;
+    border-radius: 22px;
+    /* Hard offset only — 40px blur leaks gold into alpha channel and reads as yellow halo when composited */
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.85);
+    line-height: 1.05;
+    white-space: nowrap;
+    transform: skewX(-4deg);
+  }
+</style>
+</head>
+<body>
+<!-- data-duration controls clip length. Tune to 1.5–2.0s based on speech beat. -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="1.6" data-width="1080" data-height="1920">
+  <div class="chyron-wrap" id="cw">
+    <div class="chyron-text">古城必去</div>
+  </div>
+</div>
+
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+// POP animation — pwr3.out fade+scale in (0.22s) → hold → pwr2.in fade-out (0.30s)
+// Total (1.6s default): 0.0–0.22 in, 0.22–1.30 hold, 1.30–1.60 out
+// For longer chyrons, extend the hold portion only.
+tl.from("#cw", { opacity: 0, y: 24, scale: 0.9, duration: 0.22, ease: "power3.out" }, 0.0);
+tl.to(  "#cw", { opacity: 1, y: 0,  scale: 1,   duration: 0.0 }, 0.22);
+tl.to(  "#cw", { opacity: 0, y: -16, duration: 0.30, ease: "power2.in" }, 1.30);
+
+window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
+</script>
+
+<script>
+/* gallery render shim: ?t=SECONDS seeks the main timeline to a hero frame and pauses.
+   Set __hyperframes_runtime at parse time so the template's own autoplay fallback skips. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (!p.has("t")) return;
+  window.__hyperframes_runtime = true;
+  window.addEventListener("load", function () {
+    var tl = window.__timelines && window.__timelines.main;
+    if (tl) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
+  });
+})();
+</script>
+</body>
+</html>

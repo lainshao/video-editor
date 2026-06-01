@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  /* HANNAH PALETTE — do not change unless project has its own design tokens */
+  :root {
+    --canvas: #FAF6EF;   /* main bg / cream */
+    --ink: #1A1A1C;      /* main text */
+    --accent: #F2C94C;   /* yellow highlight */
+    --neg: #E0454C;      /* red negation / X */
+    --pos: #3FA672;      /* green check */
+    --muted: #7C7468;    /* secondary text */
+    --line: #E8E2D6;     /* borders */
+    --shadow: 0 12px 32px rgba(26, 26, 28, 0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    /* TRANSPARENT BG — required so ProRes mov has alpha for editor compositing */
+    background: transparent;
+    font-family: "PingFang SC", "Inter", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+  }
+  [data-composition-id="main"] {
+    position: relative; width: 1080px; height: 1920px;
+  }
+  .scene {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 120px 80px;
+    gap: 64px;
+  }
+
+  /* CAPTION = the takeaway (top third).
+     TOP POSITION RULE — top=280px 是平台 UI 安全区边界。
+     y<250 是 Dynamic Island / 状态栏 / 关注按钮死区，文字必须躲开。
+     不要把 top 改回 100/160 — 用户会反复反馈"被刘海切了"。 */
+  .caption {
+    position: absolute; top: 280px; left: 0; right: 0;
+    text-align: center; font-size: 56px; font-weight: 900;
+    color: var(--ink); letter-spacing: -0.01em;
+    will-change: transform, opacity;
+  }
+  .caption b {
+    background: var(--accent);
+    padding: 4px 18px; border-radius: 12px;
+  }
+
+  /* HEADING = the setup / question (mid area, with the visual). */
+  .heading {
+    font-size: 64px; font-weight: 800;
+    color: var(--muted); text-align: center;
+    letter-spacing: -0.01em;
+    will-change: transform, opacity;
+  }
+  .heading .quoted {
+    background: var(--accent); padding: 4px 16px; border-radius: 12px;
+    color: var(--ink);
+  }
+
+  /* VISUAL ZONE — your actual data viz / panel / icon group goes here. */
+  .visual {
+    width: 100%;
+    /* customize per scene: bars / checklist / arrow-block / label / panel … */
+  }
+</style>
+</head>
+<body>
+<!-- data-duration controls clip length. 3.0s is the default cutaway window. -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="3" data-width="1080" data-height="1920">
+  <div class="scene">
+
+    <!-- TOP: takeaway -->
+    <div class="caption">海岛<b>三选一</b></div>
+
+    <!-- MID: setup question (optional) -->
+    <div class="heading">D5–8 这 4 天怎么排？</div>
+
+    <!-- MID: visual element — REPLACE with bars / checklist / icons / etc -->
+    <div class="visual">
+      <div style="display:flex;flex-direction:column;gap:28px;width:100%;max-width:760px;margin:0 auto;">
+        <div style="display:flex;align-items:center;gap:28px;background:#fff;border:2px solid rgba(0,0,0,0.08);border-radius:20px;padding:30px 36px;box-shadow:0 8px 22px rgba(26,26,28,0.10);">
+          <span style="font-size:72px;">📷</span><div style="font-size:48px;font-weight:800;">普吉岛 · 拍照</div></div>
+        <div style="display:flex;align-items:center;gap:28px;background:#fff;border:2px solid rgba(0,0,0,0.08);border-radius:20px;padding:30px 36px;box-shadow:0 8px 22px rgba(26,26,28,0.10);">
+          <span style="font-size:72px;">🐘</span><div style="font-size:48px;font-weight:800;">象岛 · 安静</div></div>
+        <div style="display:flex;align-items:center;gap:28px;background:#fff;border:2px solid rgba(0,0,0,0.08);border-radius:20px;padding:30px 36px;box-shadow:0 8px 22px rgba(26,26,28,0.10);">
+          <span style="font-size:72px;">🌴</span><div style="font-size:48px;font-weight:800;">苏梅岛 · 跳岛</div></div>
+      </div>
+
+      <!-- e.g.
+        <div class="bars">...</div>
+        OR
+        <div class="panel">...</div>
+        OR
+        <div class="arrow-block">...</div>
+      -->
+    </div>
+
+  </div>
+</div>
+
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+// Default animation pattern — customize per scene:
+tl.from(".caption", { y: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.10);
+tl.from(".heading", { y: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.40);
+tl.from(".visual",  { y: 60, opacity: 0, duration: 0.55, ease: "power3.out" }, 0.70);
+
+// Optional pulse on takeaway near the end:
+tl.to(".caption", { scale: 1.02, duration: 0.4, yoyo: true, repeat: 1, ease: "sine.inOut" }, 2.3);
+
+window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
+</script>
+
+<script>
+/* gallery render shim: ?t=SECONDS seeks the main timeline to a hero frame and pauses.
+   Set __hyperframes_runtime at parse time so the template's own autoplay fallback skips. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (!p.has("t")) return;
+  window.__hyperframes_runtime = true;
+  window.addEventListener("load", function () {
+    var tl = window.__timelines && window.__timelines.main;
+    if (tl) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
+  });
+})();
+</script>
+</body>
+</html>

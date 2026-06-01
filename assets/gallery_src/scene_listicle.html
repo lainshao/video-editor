@@ -1,0 +1,137 @@
+<!doctype html>
+<!--
+  Scene template: numbered listicle reveal (A 风)
+  3-5 行编号列表，依次出现，每行出现后位置固定不变，整组结尾退场。
+  最适合：口播 "1. X, 2. Y, 3. Z" 这种枚举语气。
+
+  ▶ 编辑：
+    1. 改 .row 数量、num 内容、text 内容（默认 3 行）
+    2. 改 data-duration（总时长，秒）
+    3. 在 timeline 里调每行的 reveal 时刻（应与口播节奏对齐）
+    4. 整组退场时机（默认 outro 0.40s 在结束前）
+
+  ▶ 渲染：npx hyperframes render --format mov --output renders/scene_listicle.mov
+-->
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --canvas: #FAF6EF;
+    --ink: #1A1A1C;
+    --accent: #F2C94C;
+    --muted: #7C7468;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    background: transparent;
+    font-family: "Inter", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+    color: var(--ink);
+  }
+  [data-composition-id="main"] { position: relative; width: 1080px; height: 1920px; }
+
+  .card {
+    /* top=280 → 顶部叠层起点带（y=250–420），避开 Dynamic Island / 状态栏 / 平台 UI */
+    position: absolute;
+    top: 280px; left: 80px; right: 80px;   /* 横向边距统一 80（CONVENTIONS 五·B）*/
+    padding: 48px;
+    /* 半透 cream 卡：0.55 让背景隐约透出，0.85+ 几乎不透；按内容明暗调 */
+    background: rgba(250, 246, 239, 0.55);
+    border-radius: 28px;
+    box-shadow: 0 18px 48px rgba(26, 26, 28, 0.18);
+    will-change: transform, opacity;
+  }
+  .list { display: flex; flex-direction: column; gap: 24px; }
+  .row {
+    display: flex; align-items: center; gap: 32px;
+    will-change: transform, opacity;
+  }
+  .num {
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; font-weight: 900;   /* H2 token */
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.10);
+    flex-shrink: 0;
+  }
+  .text {
+    /* H1 基准 72（不再用 92）。长项名自动换行，line-height 1.1 给多行留行距 */
+    font-size: 72px; font-weight: 900;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    min-width: 0;
+  }
+</style>
+</head>
+<body>
+<!-- ▶ 改 data-duration 成总时长 -->
+<div id="root" data-composition-id="main"
+     data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
+  <div class="card" id="card">
+    <div class="list">
+      <!-- ▶ 改下面三行的 .num 和 .text；要 4-5 行就复制 .row 加 id="r4"/"r5" -->
+      <div class="row" id="r1">
+        <div class="num">1</div><div class="text">落地缓时差</div>
+      </div>
+      <div class="row" id="r2">
+        <div class="num">2</div><div class="text">古城慢游</div>
+      </div>
+      <div class="row" id="r3">
+        <div class="num">3</div><div class="text">海岛跳岛</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+// 初始全部隐藏（往左偏 50px）
+gsap.set("#r1, #r2, #r3", { opacity: 0, x: -50 });
+gsap.set("#card", { opacity: 0, scale: 0.97, y: 12 });
+
+// 卡片入场
+tl.to("#card", { opacity: 1, scale: 1, y: 0, duration: 0.30, ease: "power3.out" }, 0.00);
+
+// ▶ 每行 reveal 时刻 — 按口播节奏调整（相对场景开始的秒数）
+//   例：cue 在语音 9.05/10.45/11.85 出，场景从 9.05 开始，则相对 0.00/1.40/2.80
+tl.to("#r1", { opacity: 1, x: 0, duration: 0.30, ease: "power3.out" }, 0.10);
+tl.to("#r2", { opacity: 1, x: 0, duration: 0.30, ease: "power3.out" }, 1.40);
+tl.to("#r3", { opacity: 1, x: 0, duration: 0.30, ease: "power3.out" }, 2.80);
+
+// 整组退场（结束前 0.40s 开始）
+tl.to("#card", { opacity: 0, y: -16, duration: 0.40, ease: "power2.in" }, 4.10);
+
+window.__timelines["main"] = tl;
+
+window.addEventListener("load", function () {
+  if (!window.__hyperframes_runtime) {
+    tl.play();
+  }
+});
+</script>
+
+<script>
+/* gallery render shim: ?t=SECONDS seeks the main timeline to a hero frame and pauses.
+   Set __hyperframes_runtime at parse time so the template's own autoplay fallback skips. */
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (!p.has("t")) return;
+  window.__hyperframes_runtime = true;
+  window.addEventListener("load", function () {
+    var tl = window.__timelines && window.__timelines.main;
+    if (tl) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
+  });
+})();
+</script>
+</body>
+</html>
