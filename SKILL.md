@@ -75,7 +75,7 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 |---|---|
 | 用户选了 4 + 给了标题 → 你直接抽口播 + 转录 + 写 HTML + 渲染 | 跳过门 1 "改 1-2 行字就修"的最便宜 checkpoint，省 5-10 min + 10k token |
 | 用户说"我要这样" → 你判断"既然他要那就直接开渲" | 跳过门 2，HTML 视觉/字号错了重渲贵 5 倍（30s 渲 × 失败次数） |
-| 用户在门 2 反馈"cue 3 改 X" → 改完直接渲 | 跳过门 3 last call，没让用户挑输出形式（mp4 only / 双输出 / broll only），可能多渲 500MB ProRes |
+| 用户在门 2 反馈"cue 3 改 X" → 改完直接渲 | 跳过门 3 last call，没让用户挑输出形式（合成原片 / broll 透明轨 / 两个都要），可能多渲 500MB ProRes |
 | 用户没说肯定 → 你猜他想推进就推进 | 用户审视未完成，渲出来跑偏要重做整轮 |
 
 ### ✅ 正例
@@ -108,9 +108,11 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 | 文件 | 用途 | 何时出 | 规格 |
 |---|---|---|---|
 | `<片名>_整片.mp4` | 预览 / 发布 / review | **每轮迭代都出** | H.264 yuv420p · CRF 20 · 含音频 + 叠层 |
-| `<片名>_broll层.mov` | 剪辑软件叠层（Premiere / AE / FCP） | 用户明说"定稿 / 出剪辑层 / 出 ProRes 层"才出 | ProRes 4444 yuva444p10le · 透明 · 静音 |
+| `<片名>_broll层.mov` | 剪辑软件叠层（Premiere / AE / FCP） | 用户明说"定稿 / 出剪辑层 / 出 ProRes 层 / B-Roll only"才出 | ProRes 4444 yuva444p10le · 透明 · 静音 |
 
 迭代期间默认只出整片 mp4。broll 层单次渲染 ~30s + 写盘 ~500MB，迭代期间 review 用不到。
+
+> ⚠ **broll 层永远是一条对好时间的完整轨**——lavfi 透明画布打底 + 每个 cue 用 `itsoffset` 摆到正确秒数（compose_dual 模板 Output 2）。用户说 **"B-Roll only"** 时就是要这一条整轨，**绝不是把 N 个 cue 分片 mov 丢给他自己去剪**。
 
 ## 标题决策矩阵（用户说"加标题 / 加片头 / 重点字"时如何抉择）
 

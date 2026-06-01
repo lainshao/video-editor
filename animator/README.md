@@ -84,10 +84,14 @@ speech.mov + 文案 / transcript
         ① 重述方案：cue 列表 + 时间窗 + 总覆盖时长
         ② 列出我做过的 judgment calls：自动改了什么、字号 / 配色 / 数据来源 /
            cue 增删 / 措辞替换 等
-        ③ 三选一渲染输出：
-           - A. broll only (.mov ProRes 4444 alpha · 给剪辑用)
-           - B. 整片 only (.mp4 h264 含音频 · 自己看 / 直接发)
-           - C. 双输出（定稿期标准）
+        ③ 三选一渲染输出（措辞要让用户一眼分清"带不带原片"和"是不是一条轨"）：
+           - A. 合成的原片 (.mp4 h264 含音频 · 叠层已烧进原片 · 自己看 / 直接发)
+           - B. 只有 Alpha 的透明素材 —— **一条对好时间的完整 broll 轨道**
+                (.mov ProRes 4444 alpha · 不含原片 · 进剪辑软件叠一层就行)
+           - C. 两个都要（定稿期标准）
+        ⚠ B 永远是**单条、时间对齐**的整轨（lavfi 透明画布 + 各 cue itsoffset 摆好），
+           **绝不是 N 个分片 mov 让用户自己去剪**。用 compose_dual 模板的 Output 2。
+           过去踩过的坑：把 "alpha 素材" 误交付成 6 个独立分片，用户得自己摆时间轴。
    ↓ 9. 按答案渲染：HyperFrames / timecut 渲每个 cue + ffmpeg compose 出对应输出
    ↓ 10. ★ Result Review（仅在出了整片 mp4 时）：生成 _review/result_review.html
         - poster 抽帧 + hover-loop 整片片段
