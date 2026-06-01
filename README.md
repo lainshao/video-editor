@@ -150,6 +150,19 @@ bash recipes/doctor.sh         # 8 项依赖一次性检查
 
 也可以显式说「用 video-editor skill」。
 
+### 更新
+
+skill 不会自动更新——想拿到新版本时**主动跑**：
+
+```bash
+cd ~/.claude/skills/video-editor && git pull
+# Codex 用户：~/.agents/skills/video-editor 同理
+```
+
+想被新 release 通知：在 [仓库主页](https://github.com/lainshao/video-editor) 点
+**Watch → Custom → Releases** 即可邮件订阅。版本号见
+[Releases 页](https://github.com/lainshao/video-editor/releases)。
+
 ## 三道门工作流
 
 `animator/`（以及全流程）会让每条新视频在渲染前过**三道评审门**——这是本 skill 最核心的主张：在改动还便宜的时候（改文字）就 review 结构决策，而不是渲完 30 秒 + 写盘 500MB 之后才发现错。
