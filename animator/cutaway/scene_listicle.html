@@ -43,7 +43,7 @@
     /* top=280 → 顶部叠层起点带（y=250–420），避开 Dynamic Island / 状态栏 / 平台 UI */
     position: absolute;
     top: 280px; left: 80px; right: 80px;   /* 横向边距统一 80（CONVENTIONS 五·B）*/
-    padding: 48px;
+    padding: 64px;   /* v0.1.4 松了 — 旧 48px 长文案贴 card 右边没呼吸 */
     /* 半透 cream 卡：0.55 让背景隐约透出，0.85+ 几乎不透；按内容明暗调 */
     background: rgba(250, 246, 239, 0.55);
     border-radius: 28px;
@@ -56,11 +56,11 @@
     will-change: transform, opacity;
   }
   .num {
-    width: 92px; height: 92px;
+    width: 72px; height: 72px;   /* v0.1.4 缩了 — 旧 92px 圆圈压过 72px 文字 */
     border-radius: 50%;
     background: var(--accent);
     display: flex; align-items: center; justify-content: center;
-    font-size: 56px; font-weight: 900;   /* H2 token */
+    font-size: 44px; font-weight: 900;   /* 跟圆圈一起缩 */
     color: var(--ink);
     letter-spacing: -0.02em;
     box-shadow: 0 5px 0 rgba(0,0,0,0.10);
