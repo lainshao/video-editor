@@ -4,7 +4,7 @@
 #
 # Produces:
 #   <out>/整片.mp4    (H.264 + AAC, speech audio + all overlays)
-#   <out>/broll层.mov (ProRes 4444 alpha, transparent gaps + opaque cutaways, no audio)
+#   <out>/broll层.mov (ProRes 4444 alpha, transparent gaps + cues, no audio)
 
 set -e
 
@@ -14,6 +14,7 @@ set -e
 SPEECH=/path/to/speech.mov          # talking-head source
 DURATION=122.93                     # output duration (seconds)
 OUT_DIR=/path/to/output_dir
+ALPHA_COMPOSE_MODE=concat_nonoverlap # concat_nonoverlap is safest for B-Roll only
 mkdir -p "$OUT_DIR"
 
 # Each overlay: (file, time_offset_s, enable_start_s, enable_end_s)
@@ -66,16 +67,90 @@ ffmpeg -nostdin -y \
   "$OUT_DIR/整片.mp4"
 
 # ───────────────────────────────────────────────────────────────────
-# Output 2: alpha-only broll layer (transparent canvas base + same overlays)
+# Output 2: alpha-only broll layer
+#
+# Default: concat transparent gaps + cue files. This avoids the common
+# premultiplied-looking RGB bug where cream cards become gray after a
+# ProRes alpha layer is composited over the speech video.
+#
+# If two cues truly overlap, render those simultaneous elements into one
+# cue first. Only set ALPHA_COMPOSE_MODE=overlay_chain as a deliberate
+# fallback, then do a real speech-background contact sheet before delivery.
 # ───────────────────────────────────────────────────────────────────
 echo "▶ Composing alpha broll layer…"
-ffmpeg -nostdin -y \
-  -f lavfi -i "color=color=black@0.0:size=1080x1920:duration=$DURATION:rate=30,format=yuva420p" \
-  $INPUT_ARGS \
-  -filter_complex "$FILTER" \
-  -map "[vout]" \
-  -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le \
-  "$OUT_DIR/broll层.mov"
+if [[ "$ALPHA_COMPOSE_MODE" == "overlay_chain" ]]; then
+  echo "⚠ Using overlay_chain for alpha output. QA over the real speech video is mandatory."
+  ffmpeg -nostdin -y \
+    -f lavfi -i "color=color=black@0.0:size=1080x1920:duration=$DURATION:rate=30,format=yuva420p" \
+    $INPUT_ARGS \
+    -filter_complex "$FILTER" \
+    -map "[vout]" \
+    -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le \
+    "$OUT_DIR/broll层.mov"
+else
+  alpha_inputs=()
+  alpha_filter=""
+  concat_labels=""
+  input_idx=0
+  seg_idx=0
+  cursor=0
+
+  add_gap() {
+    local gap="$1"
+    if awk -v g="$gap" 'BEGIN { exit !(g > 0.0005) }'; then
+      alpha_inputs+=(
+        -f lavfi -t "$gap" -i "color=color=black@0.0:size=1080x1920:rate=30,format=yuva444p10le"
+      )
+      alpha_filter+="[$input_idx:v]format=yuva444p10le,setpts=PTS-STARTPTS[s$seg_idx];"
+      concat_labels+="[s$seg_idx]"
+      input_idx=$((input_idx + 1))
+      seg_idx=$((seg_idx + 1))
+    fi
+  }
+
+  for line in "${OVERLAYS[@]}"; do
+    read -r file offset estart eend <<< "$line"
+    if awk -v s="$estart" -v c="$cursor" 'BEGIN { exit !(s < c - 0.0005) }'; then
+      echo "ERROR: alpha concat needs non-overlapping cues. '$file' starts at $estart before previous cue ends at $cursor." >&2
+      echo "Render overlapping elements into one cue, or set ALPHA_COMPOSE_MODE=overlay_chain and QA carefully." >&2
+      exit 1
+    fi
+
+    gap=$(awk -v s="$estart" -v c="$cursor" 'BEGIN { printf "%.6f", s - c }')
+    add_gap "$gap"
+
+    planned_dur=$(awk -v e="$eend" -v s="$estart" 'BEGIN { printf "%.6f", e - s }')
+    actual_dur=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file" | tr -d '[:space:]')
+    cue_dur=$(awk -v p="$planned_dur" -v a="$actual_dur" 'BEGIN {
+      d = (a > 0 && a < p) ? a : p;
+      printf "%.6f", d;
+    }')
+    if awk -v d="$cue_dur" 'BEGIN { exit !(d <= 0) }'; then
+      echo "ERROR: cue '$file' has non-positive duration ($cue_dur)." >&2
+      exit 1
+    fi
+
+    alpha_inputs+=(-t "$cue_dur" -i "$file")
+    alpha_filter+="[$input_idx:v]fps=30,scale=1080:1920,format=yuva444p10le,setpts=PTS-STARTPTS[s$seg_idx];"
+    concat_labels+="[s$seg_idx]"
+    input_idx=$((input_idx + 1))
+    seg_idx=$((seg_idx + 1))
+    cursor=$(awk -v s="$estart" -v d="$cue_dur" 'BEGIN { printf "%.6f", s + d }')
+  done
+
+  tail_gap=$(awk -v d="$DURATION" -v c="$cursor" 'BEGIN { printf "%.6f", d - c }')
+  add_gap "$tail_gap"
+
+  alpha_filter+="${concat_labels}concat=n=$seg_idx:v=1:a=0,format=yuva444p10le[vout]"
+
+  ffmpeg -nostdin -y \
+    "${alpha_inputs[@]}" \
+    -filter_complex "$alpha_filter" \
+    -map "[vout]" \
+    -t "$DURATION" \
+    -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le \
+    "$OUT_DIR/broll层.mov"
+fi
 
 echo ""
 echo "✓ Done. Outputs:"

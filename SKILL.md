@@ -100,7 +100,7 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 - **视觉规范**：`CONVENTIONS.md`（safe zone、Hana 调色板、chyron 时序、字号层级、climax 规则） —— 任何子模块写 HTML 前必读
 - **ffmpeg 双输出 recipe**：`recipes/compose_dual.sh.template`（mp4 + 可选 alpha mov）
-- **已知坑**：`recipes/PITFALLS.md`（broll_reel 闪现 / HyperFrames webm 无 alpha / ffmpeg `#` 转义 / 中文路径 TCC 等 22 条）
+- **已知坑**：`recipes/PITFALLS.md`（broll_reel 闪现 / HyperFrames webm 无 alpha / ffmpeg `#` 转义 / alpha 层变灰 / 中文路径 TCC 等 23 条）
 - **历史案例索引**：`recipes/examples.md`（你的真实视频中的 11 个 cue 范式）
 
 ## 双输出策略
@@ -112,7 +112,11 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 迭代期间默认只出整片 mp4。broll 层单次渲染 ~30s + 写盘 ~500MB，迭代期间 review 用不到。
 
-> ⚠ **broll 层永远是一条对好时间的完整轨**——lavfi 透明画布打底 + 每个 cue 用 `itsoffset` 摆到正确秒数（compose_dual 模板 Output 2）。用户说 **"B-Roll only"** 时就是要这一条整轨，**绝不是把 N 个 cue 分片 mov 丢给他自己去剪**。
+> ⚠ **broll 层永远是一条对好时间的完整轨**。用户说 **"B-Roll only"** 时就是要这一条整轨，**绝不是把 N 个 cue 分片 mov 丢给他自己去剪**。
+>
+> **非重叠 cue 的 alpha 整轨必须用 concat 方式合成**：透明 gap + cue + 透明 gap + cue，gap 按 `ffprobe` 的实际 cue 时长/帧数计算。不要把半透明卡片逐个 overlay 到 `black@0.0` 透明画布上；这会让米白卡片在最终叠回口播时变成灰黑。详见 `recipes/PITFALLS.md` 第 23 条与 `recipes/compose_dual.sh.template`。
+>
+> **交付 broll 层前必须做真实底图 QA**：把最终 `<片名>_broll层.mov` 叠到原口播上抽 4-8 张关键帧/contact sheet，看颜色、alpha、遮脸和 timing。`spec_review.html` 只能审 HTML/动画，不能替代最终 ffmpeg 合成检查。
 
 ## 标题决策矩阵（用户说"加标题 / 加片头 / 重点字"时如何抉择）
 

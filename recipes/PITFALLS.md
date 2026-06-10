@@ -95,6 +95,21 @@ overlay=enable='...':format=auto
 ```
 Without `format=auto`, alpha can be flattened to opaque.
 
+### 23. Alpha broll overlayed onto a transparent base turns cream cards gray
+**Symptom**: `spec_review.html` and each cue MOV look correct, but the final `*_broll层.mov` becomes dark gray when placed over the talking-head video. Cream card backgrounds that should read around `srgb(250,245,237)` show up around `srgb(62,60,60)`.
+
+**Cause**: A full-length transparent canvas like `black@0.0` plus repeated `overlay` can leave semi-transparent pixels with premultiplied-looking RGB. Later, the NLE or ffmpeg treats the ProRes 4444 layer as straight alpha and the card gets darkened twice.
+
+**Fix**: For non-overlapping cues, compose the alpha layer by concatenating transparent gaps and rendered cue MOVs:
+```
+gap_before_cue_1 + cue_1 + gap_between + cue_2 + ... + tail_gap
+```
+Compute gaps from the **actual** cue duration reported by `ffprobe`, not only from planned timestamps. If a cue rendered 245 frames instead of the planned 270 frames, the next transparent gap must absorb the difference.
+
+Only use an overlay chain for truly simultaneous layers; when possible, render those simultaneous elements into one cue first and then concat that cue into the final alpha track.
+
+**Required QA before delivery**: overlay the final broll MOV onto the original speech video and make a keyframe contact sheet. This catches alpha color, timing, and face-occlusion bugs that the HTML spec review cannot see.
+
 ## ProRes 4444 alpha output
 
 Required encoder settings:
