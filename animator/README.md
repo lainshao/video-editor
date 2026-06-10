@@ -171,6 +171,14 @@ speech.mov + 文案 / transcript
 
 ## cue 渲染
 
+> ⚠️ **Node 25 别用 timecut（会挂死）**。改用固化好的逐帧脚本：
+> ```bash
+> # 帧序列： node <video-editor>/recipes/render_cue_puppeteer.js <html> <durationSec> <framesDir>
+> # 单帧图： node <video-editor>/recipes/render_cue_puppeteer.js <html> --t <sec> <outPng>
+> # 帧→透明 mov： ffmpeg -framerate 30 -i <framesDir>/f%04d.png -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le cue.mov
+> ```
+> 它用 puppeteer-core 直驱系统 Chrome，逐帧 seek `__timelines.main` 截透明 PNG，不挂。下面 timecut 仅作老 node 备查。
+
 ```bash
 # 1. 复制空模板新建 cue 项目
 mkdir my_project/scene_X && cd my_project/scene_X
@@ -198,7 +206,7 @@ npx --yes timecut index.html \
 ## 配套规范
 
 - `../CONVENTIONS.md` —— ★ 必读。safe zone / chyron 时序 / 字号层级 / cutaway 多段规则 / climax 规则
-- `../recipes/PITFALLS.md` —— 22 条已知坑（叠帧鬼影 / HyperFrames webm 无 alpha / ffmpeg `#` 转义 等）
+- `../recipes/PITFALLS.md` —— 23 条已知坑（叠帧鬼影 / HyperFrames webm 无 alpha / ffmpeg `#` 转义 / alpha 层变灰 等）
 
 ## 叠帧鬼影坑（高频）
 

@@ -45,18 +45,22 @@
       .title {
         font-family: "Playfair Display", "Noto Serif SC", serif;
         font-weight: 900; color: #ffd12e; text-align: center;
-        line-height: 1.04; letter-spacing: -0.01em;
+        line-height: 1.04; letter-spacing: -0.01em; width: 100%;  /* 满宽 → 每行按画面真正中心居中，不被最宽行牵着走 */
         text-shadow: 0 4px 0 rgba(0,0,0,0.40), 0 10px 28px rgba(0,0,0,0.65);
       }
       /* 字号按「Claude Code」+「到底怎么用？」调校；换长文案见 SKILL.md 调字号 */
       .title .t1 { font-size: 138px; will-change: transform, opacity; }
       .title .t2 { font-size: 138px; will-change: transform, opacity; }
+      /* 行尾全角标点（？！。，）字形靠左、右侧留空 → text-align:center 会让墨迹偏左。
+         下方脚本自动把行尾标点包进 .q，这里收负右边距把那段右空吃掉，可见字回到正中。 */
+      .q { margin-right: -0.42em; }
 
       /* 白色斜体副标题（中文用 skewX 仿斜体，不用 font-style:italic） */
       .sub {
         margin-top: 28px;
         font-family: "Noto Sans SC", system-ui, sans-serif;
         font-weight: 700; font-size: 56px; color: #ffffff; text-align: center;
+        white-space: nowrap;   /* 副标题恒单行，避免行尾标点负边距触发意外换行 */
         transform: skewX(-8deg);
         text-shadow: 0 3px 10px rgba(0,0,0,0.7), 0 0 24px rgba(0,0,0,0.45);
         will-change: transform, opacity;
@@ -78,6 +82,12 @@
     </div>
 
     <script>
+      // 行尾全角标点自动收边距 → 修正 text-align:center 的视觉偏左（？！。，：；、）。
+      // 填占位符时直接写「时灵时不灵？」即可，不用手动包 span。
+      document.querySelectorAll(".title .t1, .title .t2, .sub").forEach(function (el) {
+        el.innerHTML = el.innerHTML.replace(/([？！。，：；、])\s*$/, '<span class="q">$1</span>');
+      });
+
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
 
@@ -93,7 +103,7 @@
         if (window.__hyperframes_runtime) return;
         var p = new URLSearchParams(location.search);
         if (p.has("t")) { tl.pause(); tl.time(parseFloat(p.get("t"))); }
-        else { tl.play(); }
+        else { tl.repeat(-1).repeatDelay(0.8); tl.play(); }  // 预览循环：避免播完淡出停在透明态 → iframe 预览黑屏
       });
     </script>
   </body>

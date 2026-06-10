@@ -33,9 +33,9 @@
     display: inline-block;
     background: var(--accent);
     color: var(--ink);
-    /* SIZE RULE:
+    /* SIZE RULE（现已由底部 autofit 脚本自动执行，无需手动改）:
          English (≤6 char): 130px
-         Long Chinese (5+ chars): 96px
+         Long Chinese (5+ chars): 96px → 实测超 920px 安全框再逐级降
          Same type/language MUST share size — never mix */
     font-size: 130px; font-weight: 900;
     letter-spacing: -0.02em;
@@ -59,6 +59,25 @@
 </div>
 
 <script>
+// ★ AUTOFIT（底层修复 2026-06-10）——SIZE RULE 代码化，填 {{TEXT}} 不用再手动改字号。
+//   历史上"长中文忘降 96px → 胶囊撑满屏破安全区"反复发生（ep1 下集预告 / ep2 下集预告）。
+//   两步：① CJK ≥5 字 → 直接落 96px 档；② 实测胶囊宽（含 skew），仍超 920px 安全框就 -4px 逐级降，地板 56px。
+(async function fitChyron() {
+  var el = document.querySelector(".chyron-text");
+  if (!el) return;
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+  var MAX = 920;  // 1080 − 80×2 安全边
+  var txt = el.textContent || "";
+  var cjk = (txt.match(/[一-鿿　-ヿ＀-￯]/g) || []).length;
+  var size = parseFloat(getComputedStyle(el).fontSize) || 130;
+  if (cjk >= 5 && size > 96) { size = 96; el.style.fontSize = size + "px"; }
+  var guard = 24;
+  while (el.getBoundingClientRect().width > MAX && size > 56 && guard-- > 0) {
+    size -= 4;
+    el.style.fontSize = size + "px";
+  }
+})();
+
 window.__timelines = window.__timelines || {};
 const tl = gsap.timeline({ paused: true });
 
@@ -73,7 +92,7 @@ window.__timelines["main"] = tl;
 
 window.addEventListener("load", function () {
   if (!window.__hyperframes_runtime) {
-    tl.play();
+    tl.repeat(-1).repeatDelay(0.8); tl.play();  // 预览循环：避免播完淡出停在透明态 → iframe 预览黑屏
   }
 });
 </script>
