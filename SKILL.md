@@ -1,11 +1,11 @@
 ---
 name: video-editor
-description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener**（黄字衬线 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出 ① 预览整片 mp4 ② 可选 alpha 通道 broll 层 mov。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材抓取不在本 skill 范围内。
+description: 9:16 + 16:9 双画幅短视频合成 / 剪辑 skill（做视频的唯一入口）。三个子模块——**opener**（黄字衬线 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出 ① 预览整片 mp4 ② 可选 alpha 通道 broll 层 mov。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材由本 skill 当总指挥委托 footage-finder 抓取（横 / 竖屏均可）。
 ---
 
 # Video Editor · 视频工人
 
-把 9:16 talking-head 口播 + 叠层素材（标题 / B-roll cutaway / chyron / 字幕）合成出短视频。**自给自足**——不依赖其他 skill。实拍 stock 素材抓取不在本 skill 范围内。
+把 9:16 / 16:9 talking-head 口播 + 叠层素材（标题 / B-roll cutaway / chyron / 字幕）合成出短视频。合成核心**自给自足**；实拍 stock / 新闻卡素材由本 skill 当总指挥派活给 footage-finder / news-highlight 抓取。
 
 ## 何时触发
 
@@ -16,9 +16,46 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 - "给口播加字幕 / chyron / 弹出文字 / 标题卡"
 - **"加动效 / 加动画 / 加视觉"**
 
-不触发但相关：
-- 实拍 stock 素材 / stock footage → 调 `stock-video` skill（不在本 skill 内）
-- 纯 16:9 横屏、纯 voice-over 生成、低于 30s 的短素材 → 不触发
+不触发但相关（委托给兄弟 skill，video-editor 当总指挥）：
+- 实拍 stock 素材 / stock footage / B-roll 空镜 → 调 `footage-finder` skill
+- 新闻 highlight 卡（真源头截图 + 黄光划重点）→ 调 `news-highlight` skill
+- 纯 voice-over 生成、低于 30s 的短素材 → 不触发
+
+## 委托：分镜 cue 类型 → 哪个 skill
+分镜（门 1）阶段给每个 cue 标类型；非本 skill 自带的两类委托出去：
+| cue 类型 | 谁做 | 产物 |
+|---|---|---|
+| `real_footage` | **footage-finder** skill | 裁好画幅的实拍 mp4 候选 + 评审页 |
+| `news_highlight` | **news-highlight** skill | 真新闻黄光划重点卡 mp4（Vox 式） |
+| opener / chyron / cutaway / listicle / spec_review | 本 skill animator/opener | HTML→mov/mp4 |
+| 字幕 | 本 skill subtitle | 关键词高亮烧字幕 |
+
+## 第零步 · 画幅 + 入口（★ video-editor 是整条工程的唯一入口）
+
+video-editor 是**总指挥**——用户做视频从这里进，**不用自己先去点 footage-finder / news-highlight / data-viz**。触发后**第一件事**用 AskUserQuestion 问画幅：
+
+> 这条视频是竖屏还是横屏？
+>   1. **9:16 竖屏**（抖音 / 小红书 / 视频号 / Reels）→ 1080×1920
+>   2. **16:9 横屏**（YouTube / B站）→ 1920×1080
+
+**判断捷径**：用户已经说了画幅（"做个 16:9 的" / "发 YouTube" / "发 B站"）就别问，直接定。
+
+画幅决定下游：
+
+| | 9:16 | 16:9 |
+|---|---|---|
+| 子模块画布 | 1080×1920 | 1920×1080 |
+| 实拍空镜 | footage-finder `--vertical` | footage-finder（默认横屏） |
+| 新闻卡 | news-highlight（改竖版） | news-highlight（Root 默认 1920×1080） |
+| 数据图 | data-viz（1080×1920） | data-viz（1920×1080） |
+| compose | `recipes/compose_dual.sh.template` | `recipes/compose_16x9.sh.template` |
+| 安全区 | CONVENTIONS 第三节 | CONVENTIONS 第一节 16:9 行 |
+
+这些子 skill 都已支持横屏；**video-editor 负责派活 + 最后合成**，用户全程只跟 video-editor 对话。16:9 还多一个 person-pip 能力（干净人脸口播 → 没内容人满屏、有内容缩右下小窗，见 CONVENTIONS 第九节 + compose_16x9 模板）。
+
+确定画幅后，再走下面的成品形态路由。
+
+---
 
 ## 第一步 · 路由问询（★ 触发后立即执行）
 
@@ -136,9 +173,8 @@ description: 9:16 短视频合成 / 剪辑 skill。三个子模块——**opener
 
 - **`hyperframes` / `hyperframes-cli`** — HyperFrames CLI（渲 HTML → mov/mp4），动画子模块的渲染依赖
 
-## 不在本 skill 范围
-
-- 实拍 stock 素材抓取（Pexels / Pixabay 等）→ 本 skill 不做
-- 16:9 横屏视频 → v2 roadmap
+## 不在本 skill 范围（委托出去）
+- 实拍 stock 素材抓取（Pexels / Pixabay）→ `footage-finder` skill
+- 新闻 highlight 卡 → `news-highlight` skill
 - 文字稿生成 / 口播 TTS → `hyperframes` skill 的 TTS 功能
 - 内容合规审核 → `content-audit` skill

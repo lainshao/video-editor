@@ -48,10 +48,14 @@ for line in "${OVERLAYS[@]}"; do
   PREV="$NEXT"
   i=$((i+1))
 done
-# Strip trailing semicolon, replace last [vN] with [vout]
-FILTER=$(echo "$FILTER" | sed 's/;$//')
+# Strip trailing semicolon, replace last [vN] with [vout].
+# ⚠ Use bash literal suffix-strip, NOT sed — sed/glob treat "[v7]" as a
+#   bracket expression (matches 'v' or '7'), so the label never substitutes
+#   and ffmpeg errors "Output label 'vout' does not exist". Quoting the
+#   pattern in ${var%"..."} forces a literal match.
+FILTER="${FILTER%;}"
 LAST_TAG="[v$((i-1))]"
-FILTER=$(echo "$FILTER" | sed "s|${LAST_TAG}\$|[vout]|")
+FILTER="${FILTER%"$LAST_TAG"}[vout]"
 
 # ───────────────────────────────────────────────────────────────────
 # Output 1: integrated mp4 (speech base + all overlays + audio)

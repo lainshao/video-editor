@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# compose_16x9.sh.template — 16:9 横屏 compose。COPY 本模板、填 CONFIG、run。
+#
+# 三种产物，由 flag 控制（可同时出）：
+#   默认           → <OUT>/整片.mp4    口播 base + 全屏 cutaway（base 可带 demo+脸）
+#   PERSON_PIP=1   → <OUT>/整片.mp4    person-pip：干净满屏人脸=base，没内容人满屏、
+#                                      有内容时内容大窗 + 人缩右下小窗（圆角白边）
+#   ALPHA_OUT=1    → <OUT>/broll层.mov ProRes4444 透明整轨（B-Roll only，concat 非重叠法）
+#   LINT=1         → 只跑渲前自检不渲染（体检）。正常 run 也会先自检，不过直接退出。
+#
+# 设计依据：CONVENTIONS 第一节(16:9 画布)、第八节(QA/自检)、第九节(person-pip)、PITFALLS #23。
+set -e
+
+# ─────────── CONFIG（按项目改）───────────
+W=1920; H=1080; FPS=30
+SPEECH=/path/speech.mov          # 默认模式:口播(可带demo+脸); PERSON_PIP:干净满屏人脸口播
+DURATION=275.367                 # 成片总时长(秒)；建议 = ffprobe SPEECH 的 duration
+OUT=/path/out;  mkdir -p "$OUT"
+ALPHA_OUT=0                      # 1 → 额外出透明 broll 整轨
+PERSON_PIP=0                     # 1 → 整片用 person-pip（SPEECH 必须是干净满屏人脸）
+
+# person-pip 小窗参数（方形，右下）
+PIP=500; PIP_B=6; PIP_R=44; PIP_MX=64; PIP_MY=72   # 边长 / 白边 / 圆角 / 右边距 / 下边距
+
+# 每条叠层： file|start_s|planned_dur_s  （按时间顺序；ALPHA_OUT 要求各 cue 非重叠）
+OVERLAYS=(
+  "/path/cue1.mp4|77|5"
+  "/path/cue2.mp4|128|5"
+  # …
+)
+# ──────────────────────────────────────────
+
+cue_dur(){ local f="$1" p="$2" a; a=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f"|tr -d '[:space:]'); awk -v p="$p" -v a="$a" 'BEGIN{printf "%.6f",(a>0&&a<p)?a:p}'; }
+
+# ─────────── 渲前自检（便宜验在前 · CONVENTIONS 第八节）───────────
+# 正常 run 先自检，任何 ✗ 直接退出；LINT=1 → 只体检不渲染。
+preflight(){
+  local ok=1 n=0 cursor=0
+  echo "── compose 自检 ──"
+  for b in ffmpeg ffprobe; do command -v "$b" >/dev/null && echo "  ✓ $b" || { echo "  ✗ 缺 $b"; ok=0; }; done
+  awk -v w="$W" -v h="$H" 'BEGIN{exit !(w*9==h*16)}' && echo "  ✓ 画幅 ${W}x${H}=16:9" || echo "  ⚠ ${W}x${H} 不是 16:9（确认是否有意）"
+  if [[ -f "$SPEECH" ]]; then
+    local sd; sd=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$SPEECH"|tr -d '[:space:]')
+    echo "  ✓ SPEECH 存在（${sd}s）"
+    awk -v a="$sd" -v d="$DURATION" 'BEGIN{exit !(a>0&&(d>a+1||d<a-1))}' && echo "  ⚠ DURATION=$DURATION 与 SPEECH ${sd}s 差>1s（确认时长）"
+  else echo "  ✗ SPEECH 不存在：$SPEECH"; ok=0; fi
+  [[ "$PERSON_PIP" == "1" ]] && echo "  ⚠ PERSON_PIP=1：确认 SPEECH 是「干净满屏人脸」轨（脸录死在角落的不行）"
+  for line in "${OVERLAYS[@]}"; do
+    IFS='|' read -r file start planned <<< "$line"; n=$((n+1))
+    [[ "$file" == /path/* ]] && { echo "  ✗ cue#$n 还是占位路径没填：$file"; ok=0; continue; }
+    [[ -f "$file" ]] || { echo "  ✗ cue#$n 文件不存在：$file"; ok=0; continue; }
+    local cd_ eend; cd_=$(cue_dur "$file" "$planned"); eend=$(awk -v s="$start" -v d="$cd_" 'BEGIN{printf "%.3f",s+d}')
+    if awk -v s="$start" -v c="$cursor" 'BEGIN{exit !(s<c-0.0005)}'; then
+      if [[ "$ALPHA_OUT" == "1" ]]; then echo "  ✗ cue#$n 时间重叠（$start<$cursor），ALPHA_OUT 需非重叠"; ok=0
+      else echo "  ⚠ cue#$n 时间重叠（$start<$cursor），整片里后者会盖前者"; fi
+    fi
+    awk -v e="$eend" -v d="$DURATION" 'BEGIN{exit !(e>d+0.0005)}' && echo "  ⚠ cue#$n 结束 ${eend}s 超出总时长 ${DURATION}s（会被截）"
+    cursor="$eend"
+  done
+  echo "  ✓ $n 条 cue 已检"
+  [[ -w "$OUT" ]] && echo "  ✓ 输出目录可写" || { echo "  ✗ 输出目录不可写：$OUT"; ok=0; }
+  [[ "$ok" == "1" ]] || { echo "🔴 自检不过，修正后再渲。"; exit 1; }
+  echo "🟢 自检通过。"
+  [[ "$LINT" == "1" ]] && { echo "（LINT=1，只体检不渲染）"; exit 0; }
+}
+preflight
+
+# ─────────── Output 1: 整片 mp4 ───────────
+echo "▶ 整片 mp4 …"
+iargs=(); i=1
+if [[ "$PERSON_PIP" == "1" ]]; then
+  fil="[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS},split=2[base][psrc];"
+  IN=$((PIP-2*PIP_B)); CX=$((PIP/2)); IX=$(( PIP/2 - PIP_R )); PX=$((W-PIP-PIP_MX)); PY=$((H-PIP-PIP_MY))
+  fil+="[psrc]crop=ih:ih:(iw-ih)/2:0,scale=${IN}:${IN},pad=${PIP}:${PIP}:${PIP_B}:${PIP_B}:white,format=rgba,"
+  fil+="geq=r='r(X\,Y)':g='g(X\,Y)':b='b(X\,Y)':a='255*lte(hypot(max(0\,abs(X-${CX})-${IX})\,max(0\,abs(Y-${CY:-$CX})-${IX}))\,${PIP_R})'[pip];"
+else
+  fil="[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS}[base];"
+fi
+prev="[base]"; union=""
+for line in "${OVERLAYS[@]}"; do
+  IFS='|' read -r file start planned <<< "$line"
+  cd_=$(cue_dur "$file" "$planned"); eend=$(awk -v s="$start" -v d="$cd_" 'BEGIN{printf "%.3f",s+d}')
+  iargs+=( -itsoffset "$start" -i "$file" )
+  fil+="[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}[c${i}];"
+  fil+="${prev}[c${i}]overlay=enable='between(t,${start},${eend})':format=auto[v${i}];"
+  prev="[v${i}]"; union+="between(t,${start},${eend})+"; i=$((i+1))
+done
+union="${union%+}"
+if [[ "$PERSON_PIP" == "1" ]]; then
+  fil+="${prev}[pip]overlay=${PX}:${PY}:enable='${union}':format=auto[vout]"
+else
+  fil="${fil%;}"; last="[v$((i-1))]"; fil="${fil%"$last"}[vout]"
+fi
+ffmpeg -nostdin -y -i "$SPEECH" "${iargs[@]}" -filter_complex "$fil" \
+  -map "[vout]" -map 0:a -c:v libx264 -pix_fmt yuv420p -crf 20 -preset fast \
+  -c:a aac -b:a 192k -shortest "$OUT/整片.mp4"
+
+# ─────────── Output 2: alpha broll 整轨（concat 非重叠）───────────
+if [[ "$ALPHA_OUT" == "1" ]]; then
+  echo "▶ broll 透明整轨 …"
+  ainputs=(); af=""; labels=""; idx=0; seg=0; cursor=0
+  addgap(){ local g="$1"; if awk -v g="$g" 'BEGIN{exit !(g>0.0005)}'; then
+    ainputs+=( -f lavfi -t "$g" -i "color=c=black@0.0:s=${W}x${H}:r=${FPS},format=yuva444p10le" )
+    af+="[${idx}:v]format=yuva444p10le,setpts=PTS-STARTPTS[s${seg}];"; labels+="[s${seg}]"; idx=$((idx+1)); seg=$((seg+1)); fi; }
+  for line in "${OVERLAYS[@]}"; do
+    IFS='|' read -r file start planned <<< "$line"
+    gap=$(awk -v s="$start" -v c="$cursor" 'BEGIN{printf "%.6f",s-c}')
+    awk -v g="$gap" 'BEGIN{exit !(g < -0.0005)}' && { echo "ERROR alpha 需非重叠: $file @ $start < $cursor"; exit 1; }
+    addgap "$gap"
+    cd_=$(cue_dur "$file" "$planned")
+    ainputs+=( -t "$cd_" -i "$file" )
+    af+="[${idx}:v]fps=${FPS},scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},format=yuva444p10le,setpts=PTS-STARTPTS[s${seg}];"
+    labels+="[s${seg}]"; idx=$((idx+1)); seg=$((seg+1)); cursor=$(awk -v s="$start" -v d="$cd_" 'BEGIN{printf "%.6f",s+d}')
+  done
+  addgap "$(awk -v d="$DURATION" -v c="$cursor" 'BEGIN{printf "%.6f",d-c}')"
+  af+="${labels}concat=n=${seg}:v=1:a=0,format=yuva444p10le[vout]"
+  ffmpeg -nostdin -y "${ainputs[@]}" -filter_complex "$af" -map "[vout]" -t "$DURATION" \
+    -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le "$OUT/broll层.mov"
+fi
+
+echo "✓ 完成："; ls -lh "$OUT"/整片.mp4 2>/dev/null; [[ "$ALPHA_OUT" == "1" ]] && ls -lh "$OUT"/broll层.mov
+# ⚠ 交付前 QA：把成品叠回真实底抽 4–8 帧拼 contact sheet（CONVENTIONS 第八节第 5 条）。
