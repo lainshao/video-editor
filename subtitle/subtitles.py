@@ -22,6 +22,7 @@ SUB_PAD_Y = 14
 SUB_RADIUS = 16
 SUB_WHITE = (255, 255, 255, 255)
 SUB_YELLOW = (255, 211, 32, 255)   # warm gold like the reference
+SUB_MAX_W = 1000            # px; captions wider than this auto-split (else PNG > 1080 canvas → cropped)
 
 
 def find_cjk_font(size: int):
@@ -92,6 +93,57 @@ def segment_caption(text: str, keywords=None):
     return result
 
 
+_SPLIT_PUNC = "，、。：；,"   # CJK 断句标点：超宽句优先在此切，最自然
+
+
+def split_overwide_captions(timed, max_w=SUB_MAX_W):
+    """把单行渲染宽度超过 max_w 的字幕拆成多条顺序子字幕，时长按字数比例切。
+    切点优先级：中文标点(切在标点后) → 空格 → 字符中点。递归处理超长句。
+    timed: [(text, start, end), ...]，text 可含 **bold** 标记。返回新的 timed。
+
+    无空格/无标点的纯 CJK 长句也能切（按字符中点），避免 PNG 比画面宽被裁。
+    """
+    from PIL import Image, ImageDraw
+    font = find_cjk_font(SUB_FONT_SIZE)
+    pd = ImageDraw.Draw(Image.new('RGBA', (10, 10)))
+
+    def width(s):
+        try:
+            return pd.textlength(s, font=font)
+        except Exception:
+            bb = pd.textbbox((0, 0), s, font=font)
+            return bb[2] - bb[0]
+
+    def split_point(txt):
+        mid = len(txt) // 2
+        for pool, after in ((_SPLIT_PUNC, True), (' ', False)):
+            best, bestd = None, 10 ** 9
+            for i, ch in enumerate(txt):
+                if ch in pool and abs(i - mid) < bestd:
+                    best, bestd = i, abs(i - mid)
+            if best is not None:
+                cut = best + 1 if after else best
+                return txt[:cut].strip(), txt[best + 1:].strip()
+        return txt[:mid].strip(), txt[mid:].strip()
+
+    def rec(text, st, en):
+        plain = text.replace('**', '')
+        if width(plain) + SUB_PAD_X * 2 <= max_w or len(plain) < 8:
+            return [(text, st, en)]
+        a, b = split_point(text)
+        # 不切坏 **bold** 配对，也不产生空串
+        if not a or not b or a.count('**') % 2 or b.count('**') % 2:
+            return [(text, st, en)]
+        la, lb = len(a.replace('**', '')), len(b.replace('**', ''))
+        midt = st + (en - st) * (la / max(1, la + lb))
+        return rec(a, st, midt) + rec(b, midt, en)
+
+    out = []
+    for text, st, en in timed:
+        out.extend(rec(text, st, en))
+    return out
+
+
 def render_subtitle_pngs(timed, keywords, out_dir: Path, total_duration: float):
     """Render each caption to a transparent PNG. Returns
     [{'png': Path, 'start': float, 'end': float}, ...] sorted by start.
@@ -104,6 +156,7 @@ def render_subtitle_pngs(timed, keywords, out_dir: Path, total_duration: float):
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in out_dir.glob('sub_*.png'):
         old.unlink()
+    timed = split_overwide_captions(timed)   # 超宽句自动按标点拆分，避免被裁
     font = find_cjk_font(SUB_FONT_SIZE)
     probe = Image.new('RGBA', (10, 10))
     pd = ImageDraw.Draw(probe)

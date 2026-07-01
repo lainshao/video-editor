@@ -238,3 +238,22 @@ warn:"按你定不画城市，emoji 表达\"哭崩\"。"
 ## Stock B-roll
 
 实拍素材（Pexels/Pixabay/Mixkit/GIPHY）抓取走 `b-roll-generator` skill，本 skill 不直接抓。其相关坑（API rate limit、aspect mismatch blur-fill、抓取后处理）见 `~/.claude/skills/b-roll-generator/`。
+
+## 抠像人物 / Alpha / 字幕
+
+### 17. 剪映/CapCut 的「透明视频」是 Apple HEVC alpha，ffmpeg 解不出 alpha
+**Symptom**: 用户在剪映/CapCut 导了「透明背景」人物视频给你 overlay，结果叠上去是**黑底**不是透明。`ffprobe` 显示 `pix_fmt=yuv420p`（不是 yuva）。
+**Cause**: 剪映 Mac 导透明用的是 **Apple HEVC alpha**（alpha 存成辅助层），brew ffmpeg 的 hevc 解码器只读基础层、丢 alpha。
+**Fix**: 用 macOS 自带 `avconvert` 转成 ProRes 4444（ffmpeg 能读 alpha）：
+```bash
+avconvert -s in.mov -o /tmp/out.mov -p PresetAppleProRes4444LPCM   # 输出必须 /tmp，路径不能有中文！
+ffprobe ... → pix_fmt=yuva444p12le ✅
+ffmpeg -i /tmp/out.mov -vf scale=1080:1920 -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le person.mov  # 降分辨率删 10GB 临时
+```
+**坑**：avconvert 输出路径含中文/特殊字符 → `Cannot create file`。ProRes4444 体积巨大（162s@4K≈10GB），降到 1080 后删临时文件。
+**分工建议**：真人抠像让用户在剪映一键做（本地 rembg 抠 4K 直接 OOM，质量也差），你只 avconvert + overlay 合成。
+
+### 18. 本机 ffmpeg 无 libass/drawtext → 字幕/文字只能 PNG overlay
+**Symptom**: `ffmpeg -filters | grep subtitles` 空；`-vf subtitles=...` / `drawtext=...` 报 No such filter。
+**Cause**: brew ffmpeg 8.x 这个 build 没编 libass/libfreetype。
+**Fix**: 走 `subtitle/` 子模块的 PNG overlay 路线（Pillow 渲透明 PNG → ffmpeg overlay）。已有清洗好的 SRT 时用 `add_subtitles.py --srt clean.srt`（跳过 whisper）；超宽 CJK 句 `subtitles.py` 会自动按标点拆分不被裁。

@@ -11,6 +11,7 @@ Usage:
 
 Options:
   --out PATH            output path (default: <video_dir>/<stem>_subtitled.mp4)
+  --srt PATH            use an existing (hand-corrected) SRT, skip whisper
   --lang LANG           whisper language (default: zh)
   --keywords "a,b,c"    extra yellow keywords (added to defaults)
   --corrections FILE    extra corrections file (added to the default one)
@@ -25,6 +26,7 @@ keyword list.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -87,6 +89,28 @@ def apply_corrections(text, rules):
     return text
 
 
+def parse_srt(path: Path):
+    """Parse an SRT into [(text, start_s, end_s), ...]. Tolerates ',' or '.' ms sep."""
+    blocks = re.split(r'\n\s*\n', path.read_text(encoding='utf-8', errors='replace').strip())
+    ts = re.compile(r'(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)')
+    out = []
+    for b in blocks:
+        lines = [l for l in b.splitlines() if l.strip()]
+        if len(lines) < 2:
+            continue
+        m = ts.search(b)   # 时间行通常带序号在第 2 行，少数无序号；整块搜更稳
+        if not m:
+            continue
+        g = list(map(int, m.groups()))
+        st = g[0] * 3600 + g[1] * 60 + g[2] + g[3] / 1000.0
+        en = g[4] * 3600 + g[5] * 60 + g[6] + g[7] / 1000.0
+        body = [l for l in lines if not ts.search(l) and not l.strip().isdigit()]
+        text = ' '.join(body).strip()
+        if text:
+            out.append((text, st, en))
+    return out
+
+
 def transcribe(video: Path, work: Path, lang: str):
     work.mkdir(parents=True, exist_ok=True)
     wav = work / 'audio.wav'
@@ -112,6 +136,8 @@ def main():
     ap.add_argument('video', type=Path)
     ap.add_argument('--out', type=Path, default=None)
     ap.add_argument('--lang', default='zh')
+    ap.add_argument('--srt', type=Path, default=None,
+                    help='use an existing (e.g. hand-corrected) SRT instead of running whisper')
     ap.add_argument('--keywords', default='')
     ap.add_argument('--corrections', default=None)
     ap.add_argument('--no-default-kw', action='store_true')
@@ -135,17 +161,26 @@ def main():
     rules = load_corrections(DEFAULT_CORRECTIONS_FILE, args.corrections)
 
     print(f"Video: {video.name} | out: {out.name}")
-    print(f"Transcribing (whisper, lang={args.lang}) ...")
-    tj = transcribe(video, work, args.lang)
-    trans = json.loads(tj.read_text(encoding='utf-8', errors='replace'))
-    chunks = trans['transcription']
     dur = video_duration(video)
 
     timed = []
-    for c in chunks:
-        text = apply_corrections(c['text'].strip(), rules)
-        if text:
-            timed.append((text, c['offsets']['from'] / 1000.0, c['offsets']['to'] / 1000.0))
+    if args.srt:
+        srt = args.srt.expanduser().resolve()
+        if not srt.exists():
+            sys.exit(f"Error: --srt file not found: {srt}")
+        print(f"Using existing SRT: {srt.name} (skipping whisper)")
+        for text, st, en in parse_srt(srt):
+            text = apply_corrections(text, rules)
+            if text:
+                timed.append((text, st, en))
+    else:
+        print(f"Transcribing (whisper, lang={args.lang}) ...")
+        tj = transcribe(video, work, args.lang)
+        trans = json.loads(tj.read_text(encoding='utf-8', errors='replace'))
+        for c in trans['transcription']:
+            text = apply_corrections(c['text'].strip(), rules)
+            if text:
+                timed.append((text, c['offsets']['from'] / 1000.0, c['offsets']['to'] / 1000.0))
 
     print("\n=== captions (corrected) ===")
     for t, s, e in timed:
