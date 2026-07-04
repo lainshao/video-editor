@@ -84,7 +84,7 @@ speech.mov + 文案 / transcript
         ① 重述方案：cue 列表 + 时间窗 + 总覆盖时长
         ② 列出我做过的 judgment calls：自动改了什么、字号 / 配色 / 数据来源 /
            cue 增删 / 措辞替换 等
-        ③ 三选一渲染输出（措辞要让用户一眼分清"带不带原片"和"是不是一条轨"）：
+        ③ 视频三选一（措辞要让用户一眼分清"带不带原片"和"是不是一条轨"）：
            - A. 合成的原片 (.mp4 h264 含音频 · 叠层已烧进原片 · 自己看 / 直接发)
            - B. 只有 Alpha 的透明素材 —— **一条对好时间的完整 broll 轨道**
                 (.mov ProRes 4444 alpha · 不含原片 · 进剪辑软件叠一层就行)
@@ -92,6 +92,14 @@ speech.mov + 文案 / transcript
         ⚠ B 永远是**单条、时间对齐**的整轨（lavfi 透明画布 + 各 cue itsoffset 摆好），
            **绝不是 N 个分片 mov 让用户自己去剪**。用 compose_dual 模板的 Output 2。
            过去踩过的坑：把 "alpha 素材" 误交付成 6 个独立分片，用户得自己摆时间轴。
+        ④ 标题透明图层（★ 默认也产出，不用用户单独要）——为 3:4 封面设计的透明 PNG，
+           1080×1440，doc-to-slides 封面大标题级别；一图两用（叠视频顶部 + 当封面标题层）。
+           做法见 `../recipes/deliverables.md`。
+        ⑤ 章节时间轴（★ 默认也产出，所有视频）——从 cue plan + 转写时间码推导，
+           粗颗粒 ~1 点/30–40s（2 分钟 3–4 点），写成 `<视频代号>-时间轴.txt`。
+        ▷ 三样都落交付文件夹 `~/Movies/<系列>/<视频代号>/`，命名
+          `<视频代号>-成片.mp4` / `-标题层.png` / `-时间轴.txt`。规范见
+          `做内容/_运营文档/视频成片流水线-模板.md`。
    ↓ 9. 按答案渲染：HyperFrames / timecut 渲每个 cue + ffmpeg compose 出对应输出
    ↓ 10. ★ Result Review（仅在出了整片 mp4 时）：生成 _review/result_review.html
         - poster 抽帧 + hover-loop 整片片段
