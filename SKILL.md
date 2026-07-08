@@ -1,6 +1,6 @@
 ---
 name: video-editor
-description: 9:16 + 16:9 双画幅短视频合成 / 剪辑 skill（做视频的唯一入口）。三个子模块——**opener**（黄字衬线 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出 ① 预览整片 mp4 ② 可选 alpha 通道 broll 层 mov。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材由本 skill 当总指挥委托 footage-finder 抓取（横 / 竖屏均可）。
+description: 9:16 + 16:9 双画幅短视频合成 / 剪辑 skill（做视频的唯一入口）。三个子模块——**opener**（黄字衬线 4.5s 标题卡）、**animator**（chyron / cutaway / listicle / spec_review HTML 评审，走"三道门"工作流）、**subtitle**（whisper 自动转写 + 关键词高亮 PNG overlay 烧字幕）。触发后**先问做什么**：① 只下字幕 ② 只烧标题 ③ 做新动画 cue / 整片合成 ④ 全流程（口播→cue→动画→合成→字幕）。输出（默认三类，落 Movies 交付文件夹）① 整片 mp4 / 可选 alpha 通道 broll 层 mov ② 3:4 标题透明图层 PNG ③ 章节时间轴 txt。触发关键词："剪一下这个视频"、"剪视频 / 剪辑"、"做一期视频"、"出整片"、"加动效 / 动画"、"加字幕 / chyron / 弹出文字"、"片头 / 标题卡 / opener"、"把口播和 B-roll 合成"、"新一期 X 系列"。实拍 stock 素材由本 skill 当总指挥委托 footage-finder 抓取（横 / 竖屏均可）。
 ---
 
 # Video Editor · 视频工人
@@ -37,6 +37,9 @@ video-editor 是**总指挥**——用户做视频从这里进，**不用自己�
 > 这条视频是竖屏还是横屏？
 >   1. **9:16 竖屏**（抖音 / 小红书 / 视频号 / Reels）→ 1080×1920
 >   2. **16:9 横屏**（YouTube / B站）→ 1920×1080
+>   3. **3:4 实操教学片**（录屏演示 / "我怎么用 AI 做 X"）→ 1080×1440 · 走 `slidecast/` 子模块
+
+**画幅跟内容类型走**：**实操教学 / 录屏演示类默认 3:4（slidecast）**；讲观点 / vlog / 泛文化等其它口播才是 9:16。别把普通口播硬塞进 3:4 录屏窗版式，也别把实操教学做成 9:16。
 
 **判断捷径**：用户已经说了画幅（"做个 16:9 的" / "发 YouTube" / "发 B站"）就别问，直接定。
 
@@ -66,6 +69,7 @@ video-editor 是**总指挥**——用户做视频从这里进，**不用自己�
 >   2. **一个标题卡 / 片头**：4.5s 透明 alpha 叠层          → `opener/` 子模块（不走三道门）
 >   3. **一条带动效的整片**：加 chyron / cutaway / 列举动画  → `animator/` 子模块（走三道门）
 >   4. **从零做成一整条**：口播 → 标题 → 动效 → 字幕 全包    → opener → animator → subtitle 依次串
+>   5. **口播实操教学片（3:4）**：口播 → case-step 录屏窗 slide + 字幕，你叠录屏/脸 → `slidecast/` 子模块（走三道门）
 
 **选项标号规范**：AskUserQuestion 的选项前缀**只用纯数字 1 / 2 / 3 / 4**，禁用 ①②③④、㋐㋑㋒㋓ 之类带圈 / 片假名字符——用户字体常不支持，渲染成乱码。
 
@@ -77,6 +81,7 @@ video-editor 是**总指挥**——用户做视频从这里进，**不用自己�
 | "做个片头 / 标题卡 / opener" | 2 · opener/ |
 | "新一期 X 系列" / "做一期视频" / "出整片" | 4 · 全流程 |
 | 上下文已经在做整片，想加 chyron / cutaway | 3 · animator/ |
+| "实操教学 / 录屏演示 / 我怎么用 AI 做 X" / 100 个 AI 实操案例系列 | 5 · slidecast/（3:4） |
 
 **关键原则**：1、2 是单点操作，**不走三道门**；3、4 必须走三道门。
 
@@ -92,7 +97,10 @@ video-editor 是**总指挥**——用户做视频从这里进，**不用自己�
                          ❌ 不要写任何 cue HTML
                          ❌ 不要开始渲染
                               │
-门 2 · Spec Review   ─►  写每个 cue 的 HTML + 生成 _review/spec_review.html
+门 2 · Spec Review   ─►  写每个 cue 的 HTML
+                         ★ 先跑 node recipes/lint_layout.js --all <cue目录>
+                           （安全区/最小字号/文字宽度/居中，FAIL 修完才继续）
+                         再生成 _review/spec_review.html
                          STOP · 告诉用户「打开 file:///<project>/_review/spec_review.html 看，反馈后回我」
                          ❌ 不要渲染 ProRes mov
                          ❌ 不要 compose 整片
@@ -132,10 +140,15 @@ video-editor 是**总指挥**——用户做视频从这里进，**不用自己�
 | `opener/` | 4.5s 黄字衬线标题卡，透明 alpha 叠层 | `opener/README.md` |
 | `animator/` | chyron / cutaway / listicle / spec_review，三道门工作流 | `animator/README.md` |
 | `subtitle/` | whisper 转写 → 关键词高亮 PNG overlay → 烧字幕 | `subtitle/README.md` |
+| `slidecast/` | **口播实操教学片（3:4）**：口播 → case-step 录屏窗 slide 按时间码硬切 + 字幕 → 预览 mp4 + 透明层 mov | `slidecast/README.md` |
 
 ## 共用规范
 
+- **交付规范**：`做内容/_运营文档/视频成片流水线-模板.md` —— 一条视频 = 两个同名文件夹（工作 / 交付）+ 门 3 默认三产物（成片 / 3:4 标题层 / 时间轴）落 `~/Movies/<系列>/<视频代号>/`。整片流程走这份
+- **交付产物 recipe**：`recipes/deliverables.md`（标题透明层怎么渲 · 时间轴怎么从 cue plan 生成 · 交付文件夹命名）
 - **视觉规范**：`CONVENTIONS.md`（safe zone、Hana 调色板、chyron 时序、字号层级、climax 规则） —— 任何子模块写 HTML 前必读
+- **布局 lint（★ 门 2 必跑）**：`node recipes/lint_layout.js <cue.html>`——puppeteer 渲染后机器检 安全区 / 最小字号 22px / 文字宽 ≤920 / 居中偏移 / 字号种数，9:16·16:9·3:4 三预设自动识别，动画 cue 按落定状态判。FAIL 修完才能给用户看 spec review。故意越界的装饰元素加 `data-lint-ignore`
+- **环境自检**：`bash recipes/doctor.sh`——新机器 / 渲染报错先跑（ffmpeg / whisper / Chrome / puppeteer-core / avconvert / 字体 11 项）
 - **ffmpeg 双输出 recipe**：`recipes/compose_dual.sh.template`（mp4 + 可选 alpha mov）
 - **已知坑**：`recipes/PITFALLS.md`（broll_reel 闪现 / HyperFrames webm 无 alpha / ffmpeg `#` 转义 / alpha 层变灰 / 中文路径 TCC 等 23 条）
 - **历史案例索引**：`recipes/examples.md`（你的真实视频中的 11 个 cue 范式）

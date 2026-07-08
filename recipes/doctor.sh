@@ -139,6 +139,32 @@ else
 fi
 
 # ───────────────────────────────────────────────
+# 渲染链（animator/opener 渲 cue + lint_layout 都靠这三样）
+# ───────────────────────────────────────────────
+echo ""
+echo "[渲染链 · Chrome + puppeteer]"
+
+CHROME_BIN="${CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+if [ -x "$CHROME_BIN" ]; then
+  ok "Chrome ($CHROME_BIN)"
+else
+  fail "Chrome" "缺失。render_cue_puppeteer.js / lint_layout.js 直驱系统 Chrome。装 Chrome 或 export CHROME_BIN=<路径>"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if (cd "$SCRIPT_DIR" && node -e "require('puppeteer-core')" 2>/dev/null); then
+  ok "puppeteer-core (recipes/node_modules)"
+else
+  fail "puppeteer-core" "缺失。装：cd $SCRIPT_DIR && npm i puppeteer-core"
+fi
+
+if command -v avconvert >/dev/null 2>&1; then
+  ok "avconvert (剪映 HEVC-alpha → ProRes4444 转码)"
+else
+  warn "avconvert" "缺失（macOS 自带，非 mac 平台跳过）。剪映/CapCut 导出的 HEVC-alpha 透明视频 ffmpeg 解不出 alpha，需要它转 ProRes4444"
+fi
+
+# ───────────────────────────────────────────────
 # 总结
 # ───────────────────────────────────────────────
 echo ""
