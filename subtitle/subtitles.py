@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 # ---- style ----
-SUB_FONT_SIZE = 58
+SUB_FONT_SIZE = 52          # 用户规定 2026-07-11：字幕改小，给抠像人像让位
 SUB_MARGIN_V = 375          # px from bottom of 1920 canvas (clears platform UI / lower-third)
 SUB_BOX_ALPHA = 165         # 0-255; ~65% opaque black box
 SUB_PAD_X = 30
@@ -22,7 +22,7 @@ SUB_PAD_Y = 14
 SUB_RADIUS = 16
 SUB_WHITE = (255, 255, 255, 255)
 SUB_YELLOW = (255, 211, 32, 255)   # warm gold like the reference
-SUB_MAX_W = 1000            # px; captions wider than this auto-split (else PNG > 1080 canvas → cropped)
+SUB_MAX_W = 660             # px; 左右各留 210px 抠像走廊（用户规定 2026-07-11），超宽在标点处分段
 
 
 def find_cjk_font(size: int):
@@ -119,12 +119,23 @@ def split_overwide_captions(timed, max_w=SUB_MAX_W):
         for pool, after in ((_SPLIT_PUNC, True), (' ', False)):
             best, bestd = None, 10 ** 9
             for i, ch in enumerate(txt):
-                if ch in pool and abs(i - mid) < bestd:
+                # 句尾标点不能当切点——切完一边是空串，rec 会放弃分段（历史 bug）
+                if ch in pool and abs(i - mid) < bestd and 0 < i < len(txt) - 2:
                     best, bestd = i, abs(i - mid)
             if best is not None:
                 cut = best + 1 if after else best
                 return txt[:cut].strip(), txt[best + 1:].strip()
-        return txt[:mid].strip(), txt[mid:].strip()
+        # 字符中点兜底：切点不许落在英文/数字单词内部（Claude→Claud/e 的历史 bug）
+        i, j = mid, mid
+        def in_word(k):
+            return 0 < k < len(txt) and txt[k - 1].isalnum() and txt[k].isalnum() \
+                and (ord(txt[k - 1]) < 0x2E80 or ord(txt[k]) < 0x2E80)
+        while in_word(i) and i > 1:
+            i -= 1
+        while in_word(j) and j < len(txt) - 1:
+            j += 1
+        cut = i if (mid - i) <= (j - mid) else j
+        return txt[:cut].strip(), txt[cut:].strip()
 
     def rec(text, st, en):
         plain = text.replace('**', '')
